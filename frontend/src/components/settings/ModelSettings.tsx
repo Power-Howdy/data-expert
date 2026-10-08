@@ -1,4 +1,4 @@
-import { Checkbox } from "@/components/ui/checkbox"
+import { CheckboxField } from "@/components/common/CheckboxField"
 import { NumberField } from "@/components/common/NumberField"
 import type { SettingsDraft } from "./useSettingsDraft"
 import { ModelPicker } from "./ModelPicker"
@@ -24,15 +24,15 @@ export function ModelSettings({ draft }: { draft: SettingsDraft }) {
           <NumberField label="Max tokens" value={m.max_tokens} min={16} step={256} onChange={(v) => set({ max_tokens: v })} />
           <NumberField label="Timeout (s)" value={m.timeout_seconds} min={5} onChange={(v) => set({ timeout_seconds: v })} />
         </div>
-        <label className="flex items-start gap-3 text-sm font-semibold">
-          <Checkbox checked={m.json_mode} onCheckedChange={(v) => set({ json_mode: v === true })} className="mt-0.5" />
-          <span>
-            Request JSON mode
-            <span className="block text-xs text-muted-foreground">
-              Sends response_format=json_object. Enable for OpenAI; leave off if your local server rejects it.
-            </span>
-          </span>
-        </label>
+        <CheckboxField
+          label="Request JSON mode" checked={m.json_mode} onChange={(v) => set({ json_mode: v })}
+          hint="Sends response_format=json_object. Enable for OpenAI; leave off if your local server rejects it."
+        />
+        <CheckboxField
+          label="Disable thinking (local models)" checked={m.disable_thinking}
+          onChange={(v) => set({ disable_thinking: v })}
+          hint="Turns off reasoning for Qwen3/DeepSeek-style models on llama.cpp, vLLM and similar servers. Much faster."
+        />
       </section>
 
       <section className="space-y-3">

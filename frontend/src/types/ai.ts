@@ -19,6 +19,7 @@ export interface AIModelSettings {
   max_tokens: number
   timeout_seconds: number
   json_mode: boolean
+  disable_thinking: boolean
   max_ai_rows: number
   batch_size: number
   concurrency: number

@@ -25,6 +25,7 @@ class AIModelSettings(BaseModel):
     max_tokens: int = Field(2048, ge=16, le=200_000)
     timeout_seconds: int = Field(120, ge=5, le=3600)
     json_mode: bool = False
+    disable_thinking: bool = True
     max_ai_rows: int = Field(100, ge=1, le=100_000)
     batch_size: int = Field(10, ge=1, le=200)
     concurrency: int = Field(2, ge=1, le=32)

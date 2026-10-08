@@ -8,6 +8,9 @@ import httpx
 from app.models.ai_schemas import AIModelSettings, AIProvider
 from app.services.ai.settings_store import ai_settings_store, is_configured, resolve_api_key
 
+HOSTED_KINDS = {"openai", "openrouter"}
+THINK_BLOCK = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
+
 
 class AIError(Exception):
     """Provider or response problem, with a message that is safe to show the user."""
@@ -78,6 +81,8 @@ class LLMClient:
         }
         if json_output and self.settings.json_mode:
             payload["response_format"] = {"type": "json_object"}
+        if self.settings.disable_thinking and self.provider.kind not in HOSTED_KINDS:
+            payload["chat_template_kwargs"] = {"enable_thinking": False}
         try:
             response = httpx.post(
                 f"{self.base_url}/chat/completions", json=payload,
@@ -90,7 +95,8 @@ class LLMClient:
         if response.status_code >= 400:
             raise AIError(f"Provider error {response.status_code}: {_error_detail(response)}")
         try:
-            return response.json()["choices"][0]["message"]["content"] or ""
+            content = response.json()["choices"][0]["message"]["content"] or ""
+            return THINK_BLOCK.sub("", content).strip()
         except (ValueError, KeyError, IndexError, TypeError):
             raise AIError("Unexpected response format from provider")
 
