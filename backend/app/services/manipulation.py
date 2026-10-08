@@ -103,7 +103,7 @@ class DataManipulationEngine:
             raise ValueError(f"Dataset {dataset_id} not found")
         
         # Validate row data against schema
-        validated_data = self._validate_row_data(request.data, dataset.schema)
+        validated_data = self._validate_row_data(request.data, dataset.columns_schema)
         validated_data["row_id"] = str(uuid.uuid4())
         
         # Add to pending changes
@@ -127,7 +127,7 @@ class DataManipulationEngine:
             raise ValueError(f"Dataset {dataset_id} not found")
         
         # Validate row data
-        validated_data = self._validate_row_data(request.data, dataset.schema)
+        validated_data = self._validate_row_data(request.data, dataset.columns_schema)
         validated_data["row_id"] = row_id
         
         # Add to pending changes
@@ -305,7 +305,7 @@ class DataManipulationEngine:
         schema = data_loader.get_schema(new_lf)
         stats = data_loader.get_stats(new_lf, schema)
         
-        dataset.schema = schema
+        dataset.columns_schema = schema
         dataset.stats = stats
         dataset.row_count = stats.row_count
         dataset.size_bytes = Path(dataset.path).stat().st_size

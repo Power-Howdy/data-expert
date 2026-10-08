@@ -32,7 +32,7 @@ class AnalyticsEngine:
         df = lf.collect()
         
         column_types = {}
-        for col in dataset.schema:
+        for col in dataset.columns_schema:
             column_types[col.type.value] = column_types.get(col.type.value, 0) + 1
         
         return AnalyticsOverview(
@@ -65,13 +65,13 @@ class AnalyticsEngine:
             df = lf.collect()
         
         columns = []
-        for col_schema in dataset.schema:
+        for col_schema in dataset.columns_schema:
             col_name = col_schema.name
             col_profile = self._profile_column(df, col_name, col_schema.type)
             columns.append(col_profile)
         
-        correlations = self._compute_correlations(df, dataset.schema)
-        missing_matrix = self._compute_missing_matrix(df, dataset.schema)
+        correlations = self._compute_correlations(df, dataset.columns_schema)
+        missing_matrix = self._compute_missing_matrix(df, dataset.columns_schema)
         
         profile = DatasetProfile(
             dataset_id=dataset_id,
@@ -217,7 +217,7 @@ class AnalyticsEngine:
         if not lf:
             raise ValueError(f"DataFrame for {dataset_id} not found")
         
-        col_schema = next((c for c in dataset.schema if c.name == column), None)
+        col_schema = next((c for c in dataset.columns_schema if c.name == column), None)
         if not col_schema:
             raise ValueError(f"Column {column} not found")
         

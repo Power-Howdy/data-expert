@@ -32,7 +32,7 @@ class CombineEngine:
             df = lf.collect()
             dataframes.append(df)
             dataset = dataset_manager.get_dataset(ds_id)
-            schemas.append(dataset.schema if dataset else [])
+            schemas.append(dataset.columns_schema if dataset else [])
         
         if request.strategy == "concat":
             combined = self._concat_dataframes(dataframes, schemas)

@@ -222,6 +222,7 @@ export function CombineTab() {
                   </div>
 
                   {(strategy === "join" || strategy === "merge") && (
+                    <>
                     <div className="grid gap-4 md:grid-cols-3">
                       <div>
                         <label className="text-sm font-medium block mb-2">Left Column</label>
@@ -252,8 +253,7 @@ export function CombineTab() {
                           </SelectContent>
                         </Select>
                       </div>
-                    </div>
-
+</div>
                     {strategy === "join" && (
                       <div>
                         <label className="text-sm font-medium block mb-2">Join Type</label>
@@ -269,7 +269,8 @@ export function CombineTab() {
                         </Select>
                       </div>
                     )}
-                  )}
+                  </>
+                )}
                 </CardContent>
               </Card>
             )}

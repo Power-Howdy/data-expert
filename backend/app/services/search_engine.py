@@ -6,7 +6,7 @@ from typing import Optional, List, Dict, Any, Tuple
 from threading import Lock
 
 import tantivy
-from tantivy import Schema, Document, Index, QueryParser, TantivyError
+from tantivy import Schema, Document, Index, parse_query, query_parser_error
 
 from app.models.schemas import SearchRequest, SearchResult, SearchResponse, Dataset
 from app.core.config import settings
@@ -52,7 +52,7 @@ class SearchEngine:
             
             try:
                 index = tantivy.Index(schema, str(index_path))
-            except TantivyError:
+            except Exception:
                 index = tantivy.Index(schema, str(index_path), create=True)
             
             self._indexes[dataset_id] = index
@@ -68,7 +68,7 @@ class SearchEngine:
         if not lf:
             raise ValueError(f"DataFrame for {dataset_id} not found")
         
-        columns = [col.name for col in dataset.schema]
+        columns = [col.name for col in dataset.columns_schema]
         index = self._get_or_create_index(dataset_id, columns)
         
         writer = index.writer(heap_size=settings.performance.max_memory_usage_mb * 1024 * 1024)
@@ -121,20 +121,19 @@ class SearchEngine:
         index = self._get_or_create_index(request.dataset_id, columns)
         
         searcher = index.searcher()
-        schema = self._schemas[request.dataset_id]
-        
-        query_parser = QueryParser(
-            schema=schema,
-            field_names=columns,
-            default_field=columns[0] if columns else "row_id"
-        )
         
         query_text = request.query
         if request.fuzzy:
             query_text = f"{query_text}~"
         
         try:
-            query = query_parser.parse_query(query_text)
+            # Use parse_query with the schema and field names
+            query = parse_query(
+                query_text,
+                schema=self._schemas[request.dataset_id],
+                field_names=columns,
+                default_field=columns[0] if columns else "row_id"
+            )
         except Exception as e:
             raise ValueError(f"Invalid query: {e}")
         
@@ -179,7 +178,7 @@ class SearchEngine:
         if not dataset:
             return []
         
-        columns = [col.name for col in dataset.schema]
+        columns = [col.name for col in dataset.columns_schema]
         index = self._get_or_create_index(dataset_id, columns)
         searcher = index.searcher()
         
@@ -223,7 +222,7 @@ class SearchEngine:
             columns = []
             dataset = dataset_manager.get_dataset(dataset_id)
             if dataset:
-                columns = [col.name for col in dataset.schema]
+                columns = [col.name for col in dataset.columns_schema]
             
             index = self._get_or_create_index(dataset_id, columns)
             searcher = index.searcher()

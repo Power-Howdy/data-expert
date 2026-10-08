@@ -27,8 +27,8 @@ A modern, powerful data exploration and analysis tool with a Streamlit-like back
 ## Quick Start
 
 ### Prerequisites
-- Python 3.10+
-- Node.js 18+
+- Python 3.14+
+- Node.js 24+
 - pnpm (recommended) or npm
 
 ### Backend Setup

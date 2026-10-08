@@ -2,7 +2,7 @@
 import * as React from "react"
 import * as SelectPrimitive from "@radix-ui/react-select"
 import { cn } from "@/lib/utils"
-import { ChevronDown, ChevronUp } from "lucide-react"
+import { ChevronDown, ChevronUp, Check } from "lucide-react"
 
 const Select = SelectPrimitive.Root
 const SelectGroup = SelectPrimitive.Group
@@ -119,7 +119,7 @@ const SelectItem = React.forwardRef<
     {...props}
   >
     <SelectPrimitive.ItemIndicator>
-      <SelectPrimitive.ItemIcon />
+      <Check className="h-4 w-4" />
     </SelectPrimitive.ItemIndicator>
     <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
   </SelectPrimitive.Item>

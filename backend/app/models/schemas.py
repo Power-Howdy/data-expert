@@ -56,7 +56,7 @@ class Dataset(BaseModel):
     name: str
     path: str
     format: DataFormat
-    schema: List[ColumnSchema] = []
+    columns_schema: List[ColumnSchema] = Field(default_factory=list, alias="schema")
     stats: Optional[DatasetStats] = None
     row_count: int = 0
     size_bytes: int = 0

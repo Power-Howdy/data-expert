@@ -151,7 +151,7 @@ async def get_rows(
 async def get_schema(dataset_id: str):
     """Get dataset schema."""
     dataset = get_dataset(dataset_id)
-    return {"columns": dataset.schema}
+    return {"columns": dataset.columns_schema}
 
 
 @app.get("/api/datasets/{dataset_id}/stream")
