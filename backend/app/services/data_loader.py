@@ -38,13 +38,27 @@ for fmt, exts in FORMAT_EXTENSIONS.items():
         EXTENSION_TO_FORMAT[ext] = fmt
 
 
-def detect_format(path: str) -> DataFormat:
-    """Detect data format from file extension."""
+def detect_format(path: str) -> Optional[DataFormat]:
+    """Detect data format from file extension. Unknown files are not data files."""
     path_lower = path.lower()
-    for ext, fmt in EXTENSION_TO_FORMAT.items():
+    matches = (
+        (ext, fmt)
+        for ext, fmt in sorted(EXTENSION_TO_FORMAT.items(), key=lambda item: len(item[0]), reverse=True)
+    )
+    for ext, fmt in matches:
         if path_lower.endswith(ext):
             return fmt
-    return DataFormat.PARQUET
+    return None
+
+
+def csv_encoding(encoding: Optional[str]) -> str:
+    """Map config encodings to the values Polars accepts."""
+    value = (encoding or "utf8").lower().replace("_", "-")
+    if value in {"utf-8", "utf8"}:
+        return "utf8"
+    if value in {"utf-8-lossy", "utf8-lossy"}:
+        return "utf8-lossy"
+    return "utf8"
 
 
 def polars_to_pydantic_type(dtype: pl.DataType) -> DataType:
@@ -88,6 +102,8 @@ class DataLoader:
         
         if format is None:
             format = detect_format(path)
+        if format is None:
+            raise ValueError(f"Unsupported data file: {Path(path).name}")
         
         lf = self._read_lazy(path, format, **options)
         self._cache[cache_key] = lf
@@ -101,26 +117,16 @@ class DataLoader:
             return pl.scan_parquet(path, **options)
         
         elif format == DataFormat.CSV:
-            return pl.scan_csv(
-                path,
-                separator=options.get("separator", settings.formats.csv_delimiter),
-                encoding=options.get("encoding", settings.formats.encoding),
-                **{k: v for k, v in options.items() if k not in ["separator", "encoding"]}
-            )
+            return pl.scan_csv(path, **self._csv_options(options, settings.formats.csv_delimiter))
         
         elif format == DataFormat.TSV:
-            return pl.scan_csv(
-                path,
-                separator="\t",
-                encoding=options.get("encoding", settings.formats.encoding),
-                **{k: v for k, v in options.items() if k not in ["separator", "encoding"]}
-            )
+            return pl.scan_csv(path, **self._csv_options(options, "\t"))
         
         elif format == DataFormat.FEATHER:
             return pl.scan_ipc(path, **options)
         
         elif format == DataFormat.JSON:
-            return pl.scan_ndjson(path, **options)
+            return self._read_json_lazy(path)
         
         elif format == DataFormat.JSONL:
             return pl.scan_ndjson(path, **options)
@@ -140,6 +146,22 @@ class DataLoader:
         else:
             raise ValueError(f"Unsupported format: {format}")
     
+    def _csv_options(self, options: Dict[str, Any], separator: str) -> Dict[str, Any]:
+        """Build Polars CSV options, normalizing encoding names such as utf-8."""
+        extra = {k: v for k, v in options.items() if k not in ["separator", "encoding"]}
+        return {
+            "separator": options.get("separator", separator),
+            "encoding": csv_encoding(options.get("encoding", settings.formats.encoding)),
+            **extra,
+        }
+
+    def _read_json_lazy(self, path: str) -> pl.LazyFrame:
+        """Read a JSON array or object, falling back to newline-delimited JSON."""
+        try:
+            return pl.read_json(path).lazy()
+        except Exception:
+            return pl.scan_ndjson(path)
+
     def _read_json_gz_lazy(self, path: str, **options) -> pl.LazyFrame:
         """Read gzipped JSON/JSONL as LazyFrame."""
         import gzip
@@ -181,27 +203,19 @@ class DataLoader:
         """Load data eagerly as DataFrame."""
         if format is None:
             format = detect_format(path)
+        if format is None:
+            raise ValueError(f"Unsupported data file: {Path(path).name}")
         
         if format == DataFormat.PARQUET:
             return pl.read_parquet(path, **options)
         elif format == DataFormat.CSV:
-            return pl.read_csv(
-                path,
-                separator=options.get("separator", settings.formats.csv_delimiter),
-                encoding=options.get("encoding", settings.formats.encoding),
-                **{k: v for k, v in options.items() if k not in ["separator", "encoding"]}
-            )
+            return pl.read_csv(path, **self._csv_options(options, settings.formats.csv_delimiter))
         elif format == DataFormat.TSV:
-            return pl.read_csv(
-                path,
-                separator="\t",
-                encoding=options.get("encoding", settings.formats.encoding),
-                **{k: v for k, v in options.items() if k not in ["separator", "encoding"]}
-            )
+            return pl.read_csv(path, **self._csv_options(options, "\t"))
         elif format == DataFormat.FEATHER:
             return pl.read_ipc(path, **options)
         elif format == DataFormat.JSON:
-            return pl.read_json(path, **options)
+            return self._read_json_eager(path)
         elif format == DataFormat.JSONL:
             return pl.read_ndjson(path, **options)
         elif format == DataFormat.JSON_GZ:
@@ -215,6 +229,13 @@ class DataLoader:
         else:
             raise ValueError(f"Unsupported format: {format}")
     
+    def _read_json_eager(self, path: str) -> pl.DataFrame:
+        """Read a JSON array or object, falling back to newline-delimited JSON."""
+        try:
+            return pl.read_json(path)
+        except Exception:
+            return pl.read_ndjson(path)
+
     def _read_json_gz_eager(self, path: str, **options) -> pl.DataFrame:
         """Read gzipped JSON/JSONL eagerly."""
         with gzip.open(path, "rt", encoding=options.get("encoding", "utf-8")) as f:
@@ -370,23 +391,43 @@ class DataLoader:
 
 
 class DatasetManager:
-    """Manages loaded datasets."""
+    """Manages loaded datasets and persists them so they survive restarts."""
     
-    def __init__(self):
+    def __init__(self, registry_path: Optional[str] = None):
         self.datasets: Dict[str, Dataset] = {}
         self.dataframes: Dict[str, pl.LazyFrame] = {}
+        self.options: Dict[str, Dict[str, Any]] = {}
         self.loader = DataLoader()
+        self.registry_path = Path(registry_path or settings.data.registry_path)
+        self.restore()
     
     def load_dataset(self, request) -> Dataset:
-        """Load a dataset from path."""
-        path = request.path
-        name = request.name or Path(path).stem
-        format = request.format or detect_format(path)
+        """Load a dataset from path, reusing the existing entry for the same file."""
+        path = str(Path(request.path).resolve())
+        existing = self.find_by_path(path)
+        if existing:
+            self.unload_dataset(existing.id, persist=False)
         
-        lf = self.loader.load_lazy(path, format, **request.options)
+        format = request.format or detect_format(path)
+        if format is None:
+            raise ValueError(f"Unsupported data file: {Path(path).name}")
+        
+        dataset, lf = self._build(
+            path, format, request.name or Path(path).stem, request.options,
+            dataset_id=existing.id if existing else None,
+        )
+        self.register(dataset, lf, request.options)
+        return dataset
+    
+    def _build(
+        self, path: str, format: DataFormat, name: str,
+        options: Dict[str, Any], dataset_id: Optional[str] = None,
+    ):
+        self.loader._cache = {k: v for k, v in self.loader._cache.items() if not k.startswith(f"{path}:")}
+        lf = self.loader.load_lazy(path, format, **options)
         schema = self.loader.get_schema(lf)
         stats = self.loader.get_stats(lf, schema)
-        
+        file_stat = Path(path).stat()
         dataset = Dataset(
             name=name,
             path=path,
@@ -394,14 +435,74 @@ class DatasetManager:
             schema=schema,
             stats=stats,
             row_count=stats.row_count,
-            size_bytes=Path(path).stat().st_size,
-            last_modified=datetime.fromtimestamp(Path(path).stat().st_mtime),
+            size_bytes=file_stat.st_size,
+            last_modified=datetime.fromtimestamp(file_stat.st_mtime),
+            **({"id": dataset_id} if dataset_id else {}),
         )
+        return dataset, lf
+    
+    def register(self, dataset: Dataset, lf: pl.LazyFrame, options: Optional[Dict[str, Any]] = None) -> None:
+        """Track a dataset in memory and persist the registry."""
+        self.datasets[dataset.id] = dataset
+        self.dataframes[dataset.id] = lf
+        self.options[dataset.id] = options or {}
+        self.save()
+    
+    def find_by_path(self, path: str) -> Optional[Dataset]:
+        target = str(Path(path).resolve()).lower()
+        return next((d for d in self.datasets.values() if str(Path(d.path).resolve()).lower() == target), None)
+    
+    def save(self) -> None:
+        """Write dataset handles (path, format, options, metadata) to disk."""
+        entries = [
+            {"dataset": d.model_dump(mode="json", by_alias=True), "options": self.options.get(d.id, {})}
+            for d in self.datasets.values()
+        ]
+        try:
+            self.registry_path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = self.registry_path.with_suffix(".tmp")
+            tmp.write_text(json.dumps(entries, indent=2), encoding="utf-8")
+            os.replace(tmp, self.registry_path)
+        except OSError as e:
+            logger.warning(f"Could not save dataset registry: {e}")
+    
+    def restore(self) -> None:
+        """Re-open datasets from the registry; recompute metadata only for changed files."""
+        if not self.registry_path.exists():
+            return
+        try:
+            entries = json.loads(self.registry_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as e:
+            logger.warning(f"Could not read dataset registry: {e}")
+            return
+        
+        for entry in entries:
+            try:
+                self._restore_entry(entry["dataset"], entry.get("options", {}))
+            except Exception as e:
+                logger.warning(f"Skipping dataset {entry.get('dataset', {}).get('path')}: {e}")
+        self.save()
+    
+    def _restore_entry(self, saved: Dict[str, Any], options: Dict[str, Any]) -> None:
+        dataset = Dataset(**saved)
+        file_path = Path(dataset.path)
+        if not file_path.exists():
+            logger.warning(f"Dataset file missing, dropping: {dataset.path}")
+            return
+        
+        file_stat = file_path.stat()
+        unchanged = (
+            file_stat.st_size == dataset.size_bytes
+            and abs(file_stat.st_mtime - dataset.last_modified.timestamp()) < 1
+        )
+        if unchanged:
+            lf = self.loader.load_lazy(dataset.path, dataset.format, **options)
+        else:
+            dataset, lf = self._build(dataset.path, dataset.format, dataset.name, options, dataset.id)
         
         self.datasets[dataset.id] = dataset
         self.dataframes[dataset.id] = lf
-        
-        return dataset
+        self.options[dataset.id] = options
     
     def get_dataset(self, dataset_id: str) -> Optional[Dataset]:
         return self.datasets.get(dataset_id)
@@ -412,10 +513,13 @@ class DatasetManager:
     def list_datasets(self) -> List[Dataset]:
         return list(self.datasets.values())
     
-    def unload_dataset(self, dataset_id: str) -> bool:
+    def unload_dataset(self, dataset_id: str, persist: bool = True) -> bool:
         if dataset_id in self.datasets:
             del self.datasets[dataset_id]
-            del self.dataframes[dataset_id]
+            self.dataframes.pop(dataset_id, None)
+            self.options.pop(dataset_id, None)
+            if persist:
+                self.save()
             return True
         return False
     

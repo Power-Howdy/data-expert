@@ -26,7 +26,7 @@ class AnalyticsEngine:
             raise ValueError(f"Dataset {dataset_id} not found")
         
         lf = dataset_manager.get_dataframe(dataset_id)
-        if not lf:
+        if lf is None:
             raise ValueError(f"DataFrame for {dataset_id} not found")
         
         df = lf.collect()
@@ -56,7 +56,7 @@ class AnalyticsEngine:
             raise ValueError(f"Dataset {dataset_id} not found")
         
         lf = dataset_manager.get_dataframe(dataset_id)
-        if not lf:
+        if lf is None:
             raise ValueError(f"DataFrame for {dataset_id} not found")
         
         if sample_size and dataset.row_count > sample_size:
@@ -214,7 +214,7 @@ class AnalyticsEngine:
             raise ValueError(f"Dataset {dataset_id} not found")
         
         lf = dataset_manager.get_dataframe(dataset_id)
-        if not lf:
+        if lf is None:
             raise ValueError(f"DataFrame for {dataset_id} not found")
         
         col_schema = next((c for c in dataset.columns_schema if c.name == column), None)
@@ -260,7 +260,7 @@ class AnalyticsEngine:
             raise ValueError(f"Dataset {dataset_id} not found")
         
         lf = dataset_manager.get_dataframe(dataset_id)
-        if not lf:
+        if lf is None:
             raise ValueError(f"DataFrame for {dataset_id} not found")
         
         series = lf.select(pl.col(column)).collect()[column].drop_nulls()

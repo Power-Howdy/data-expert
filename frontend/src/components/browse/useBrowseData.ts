@@ -7,6 +7,7 @@ import { ColumnFilter } from "./filterOperators"
 export function useBrowseData(dataset: Dataset | undefined) {
   const [rows, setRows] = React.useState<RowData[]>([])
   const [total, setTotal] = React.useState(0)
+  const [loading, setLoading] = React.useState(false)
   const [page, setPage] = React.useState(0)
   const [pageSize, setPageSize] = React.useState(100)
   const [filters, setFilters] = React.useState<ColumnFilter[]>([])
@@ -14,21 +15,32 @@ export function useBrowseData(dataset: Dataset | undefined) {
   const [searchQuery, setSearchQuery] = React.useState("")
   const [searchResults, setSearchResults] = React.useState<RowData[]>([])
   const [searchLoading, setSearchLoading] = React.useState(false)
-
-  const loadRows = React.useCallback(async () => {
-    if (!dataset) return
-    try {
-      const result = await api.getRows(dataset.id, page * pageSize, pageSize, filters, sorts)
-      setRows(result.rows)
-      setTotal(result.total)
-    } catch (error) {
-      toast.error("Failed to load rows")
-    }
-  }, [dataset, page, pageSize, filters, sorts])
+  const requestId = React.useRef(0)
+  const datasetId = dataset?.id
 
   React.useEffect(() => {
-    loadRows()
-  }, [loadRows])
+    setRows([])
+    setTotal(dataset?.row_count ?? 0)
+    setPage(0)
+    setFilters([])
+    setSearchQuery("")
+    setSearchResults([])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [datasetId])
+
+  React.useEffect(() => {
+    if (!datasetId) return
+    const id = ++requestId.current
+    setLoading(true)
+    api.getRows(datasetId, page * pageSize, pageSize, filters, sorts)
+      .then((result) => {
+        if (id !== requestId.current) return
+        setRows(result.rows)
+        setTotal(result.total)
+      })
+      .catch(() => id === requestId.current && toast.error("Failed to load rows"))
+      .finally(() => id === requestId.current && setLoading(false))
+  }, [datasetId, page, pageSize, filters, sorts])
 
   const search = async () => {
     if (!dataset || !searchQuery.trim()) return
@@ -36,7 +48,6 @@ export function useBrowseData(dataset: Dataset | undefined) {
     try {
       const result = await api.search(dataset.id, searchQuery, { limit: 100 })
       setSearchResults(result.results.map((r: { row_id: string; data: Record<string, any> }) => ({ id: r.row_id, data: r.data })))
-      setPage(0)
     } catch (error) {
       toast.error("Search failed")
     } finally {
@@ -49,9 +60,21 @@ export function useBrowseData(dataset: Dataset | undefined) {
     setPage(0)
   }
 
+  const changeFilters = (next: ColumnFilter[]) => {
+    setFilters(next)
+    setPage(0)
+  }
+
+  const changeSearchQuery = (value: string) => {
+    setSearchQuery(value)
+    if (!value.trim()) setSearchResults([])
+  }
+
+  const pageCount = Math.max(1, Math.ceil(total / pageSize))
+
   return {
-    rows, total, pageSize, changePageSize,
-    filters, setFilters,
-    searchQuery, setSearchQuery, searchResults, searchLoading, search,
+    rows, total, loading, page, setPage, pageCount, pageSize, changePageSize,
+    filters, setFilters: changeFilters,
+    searchQuery, setSearchQuery: changeSearchQuery, searchResults, searchLoading, search,
   }
 }

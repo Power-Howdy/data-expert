@@ -21,7 +21,7 @@ class ExportEngine:
     def export(self, request: ExportRequest) -> Dict[str, Any]:
         """Export dataset to specified format."""
         lf = dataset_manager.get_dataframe(request.dataset_id)
-        if not lf:
+        if lf is None:
             raise ValueError(f"Dataset {request.dataset_id} not found")
         
         dataset = dataset_manager.get_dataset(request.dataset_id)
@@ -80,7 +80,7 @@ class ExportEngine:
     ) -> Iterator[bytes]:
         """Stream export for large datasets."""
         lf = dataset_manager.get_dataframe(request.dataset_id)
-        if not lf:
+        if lf is None:
             raise ValueError(f"Dataset {request.dataset_id} not found")
         
         # Apply filters

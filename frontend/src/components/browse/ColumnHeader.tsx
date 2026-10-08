@@ -1,12 +1,13 @@
-import { Badge } from "@/components/ui/badge"
 import { ColumnSchema } from "@/types"
 
 export function ColumnHeader({ column }: { column: ColumnSchema }) {
   return (
-    <div className="flex items-center gap-1">
-      <span>{column.name}</span>
-      <Badge variant="outline" className="text-xs">{column.type}</Badge>
-      {column.nullable && <Badge variant="secondary" className="text-xs">nullable</Badge>}
-    </div>
+    <span
+      className="flex items-baseline gap-1.5 whitespace-nowrap"
+      title={`${column.name} · ${column.type}${column.nullable ? " · nullable" : ""}`}
+    >
+      <span className="normal-case text-foreground">{column.name}</span>
+      <span className="text-[10px] font-semibold lowercase text-muted-foreground/70">{column.type}</span>
+    </span>
   )
 }

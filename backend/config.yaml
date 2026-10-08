@@ -27,7 +27,7 @@ data:
 
 formats:
   auto_detect: true
-  encoding: "utf-8"
+  encoding: "utf8"
   csv_delimiter: ","
   json_lines: true
 

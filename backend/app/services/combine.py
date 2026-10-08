@@ -27,7 +27,7 @@ class CombineEngine:
         
         for ds_id in request.dataset_ids:
             lf = dataset_manager.get_dataframe(ds_id)
-            if not lf:
+            if lf is None:
                 raise ValueError(f"Dataset {ds_id} not found")
             df = lf.collect()
             dataframes.append(df)
@@ -62,8 +62,7 @@ class CombineEngine:
             size_bytes=Path(output_path).stat().st_size,
         )
         
-        dataset_manager.datasets[dataset.id] = dataset
-        dataset_manager.dataframes[dataset.id] = new_lf
+        dataset_manager.register(dataset, new_lf)
         
         return dataset
     
@@ -130,7 +129,7 @@ class CombineEngine:
     def separate(self, request: SeparateRequest) -> List[Dataset]:
         """Separate a dataset by unique values in a column."""
         lf = dataset_manager.get_dataframe(request.dataset_id)
-        if not lf:
+        if lf is None:
             raise ValueError(f"Dataset {request.dataset_id} not found")
         
         dataset = dataset_manager.get_dataset(request.dataset_id)
@@ -180,8 +179,7 @@ class CombineEngine:
                 size_bytes=Path(output_path).stat().st_size,
             )
             
-            dataset_manager.datasets[new_dataset.id] = new_dataset
-            dataset_manager.dataframes[new_dataset.id] = new_lf
+            dataset_manager.register(new_dataset, new_lf)
             created_datasets.append(new_dataset)
         
         return created_datasets
@@ -212,7 +210,7 @@ class CombineEngine:
         dataframes = []
         for ds_id in dataset_ids:
             lf = dataset_manager.get_dataframe(ds_id)
-            if not lf:
+            if lf is None:
                 raise ValueError(f"Dataset {ds_id} not found")
             dataframes.append(lf.collect())
         

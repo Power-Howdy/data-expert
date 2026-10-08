@@ -8,7 +8,8 @@ export function useDatasetColumns(dataset: Dataset | undefined): ColumnDef<RowDa
   return React.useMemo(() => {
     if (!dataset) return []
     return dataset.schema.map((col) => ({
-      accessorKey: col.name,
+      id: col.name,
+      accessorFn: (row: RowData) => row.data?.[col.name],
       header: () => <ColumnHeader column={col} />,
       cell: ({ getValue }) => <CellValue value={getValue()} />,
     }))

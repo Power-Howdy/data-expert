@@ -1,6 +1,5 @@
 import * as React from "react"
 import { Filter, Loader2, Search } from "lucide-react"
-import { DataTable } from "@/components/ui/data-table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
@@ -12,12 +11,14 @@ import { useBrowseData } from "./useBrowseData"
 import { useDatasetColumns } from "./useDatasetColumns"
 import { FilterPanel } from "./FilterPanel"
 import { BrowseFooter } from "./BrowseFooter"
+import { BrowseTable } from "./BrowseTable"
 
 export function BrowseTab() {
   const dataset = useSelectedDataset()
   const columns = useDatasetColumns(dataset)
   const data = useBrowseData(dataset)
   const [showFilters, setShowFilters] = React.useState(false)
+  const showingSearch = data.searchResults.length > 0
 
   if (!dataset) {
     return (
@@ -62,24 +63,32 @@ export function BrowseTab() {
         />
       )}
       <Separator />
+      {showingSearch && (
+        <div className="-mb-3 text-xs font-extrabold uppercase tracking-wide text-muted-foreground">
+          Showing {data.searchResults.length} search results
+        </div>
+      )}
       <div className="min-h-0 flex-1">
-        {data.searchQuery && data.searchResults.length > 0 && (
-          <div className="mb-2 text-xs font-extrabold uppercase tracking-wide text-muted-foreground">
-            Showing {data.searchResults.length} search results
-          </div>
-        )}
-        <DataTable
+        <BrowseTable
           columns={columns}
-          data={data.searchQuery ? data.searchResults : data.rows}
-          pageSize={data.pageSize}
+          rows={showingSearch ? data.searchResults : data.rows}
+          schema={dataset.schema}
+          loading={data.loading}
+          rowOffset={showingSearch ? 0 : data.page * data.pageSize}
         />
       </div>
-      <BrowseFooter
-        shown={data.rows.length}
-        total={data.total}
-        pageSize={data.pageSize}
-        onPageSizeChange={data.changePageSize}
-      />
+      {!showingSearch && (
+        <BrowseFooter
+          page={data.page}
+          pageCount={data.pageCount}
+          pageSize={data.pageSize}
+          shown={data.rows.length}
+          total={data.total}
+          loading={data.loading}
+          onPageChange={data.setPage}
+          onPageSizeChange={data.changePageSize}
+        />
+      )}
     </div>
   )
 }

@@ -65,7 +65,7 @@ class SearchEngine:
             raise ValueError(f"Dataset {dataset_id} not found")
         
         lf = dataset_manager.get_dataframe(dataset_id)
-        if not lf:
+        if lf is None:
             raise ValueError(f"DataFrame for {dataset_id} not found")
         
         columns = [col.name for col in dataset.columns_schema]

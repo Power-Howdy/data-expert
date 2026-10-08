@@ -5,9 +5,10 @@ interface DataTableBodyProps<TData> {
   table: Table<TData>
   columnCount: number
   onRowClick?: (row: TData) => void
+  emptyText?: string
 }
 
-export function DataTableBody<TData>({ table, columnCount, onRowClick }: DataTableBodyProps<TData>) {
+export function DataTableBody<TData>({ table, columnCount, onRowClick, emptyText = "No data yet" }: DataTableBodyProps<TData>) {
   const rows = table.getRowModel().rows
   const selection = table.getState().rowSelection
 
@@ -25,7 +26,7 @@ export function DataTableBody<TData>({ table, columnCount, onRowClick }: DataTab
             onClick={() => onRowClick?.(row.original)}
           >
             {row.getVisibleCells().map((cell) => (
-              <td key={cell.id} className="p-3.5 align-middle text-sm font-semibold">
+              <td key={cell.id} className="whitespace-nowrap px-3.5 py-3 align-middle text-sm font-semibold">
                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
               </td>
             ))}
@@ -34,7 +35,7 @@ export function DataTableBody<TData>({ table, columnCount, onRowClick }: DataTab
       ) : (
         <tr>
           <td colSpan={columnCount} className="h-28 text-center text-sm font-bold text-muted-foreground">
-            No data yet
+            {emptyText}
           </td>
         </tr>
       )}

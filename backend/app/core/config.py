@@ -16,6 +16,7 @@ class DataSettings(BaseSettings):
     default_page_size: int = 100
     max_preview_rows: int = 1000
     search_index_path: str = "./.data_expert/search_indexes"
+    registry_path: str = "./.data_expert/datasets.json"
     allowed_extensions: List[str] = Field(default_factory=lambda: [
         ".parquet", ".json", ".jsonl", ".json.gz", 
         ".csv", ".tsv", ".feather", ".avro", ".orc", 

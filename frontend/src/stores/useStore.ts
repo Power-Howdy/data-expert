@@ -53,6 +53,7 @@ export const useDatasetStore = create<DatasetState>()(
     {
       name: "data-expert-store",
       partialize: (state) => ({
+        selectedDatasetId: state.selectedDatasetId,
         sidebarOpen: state.sidebarOpen,
         sidebarWidth: state.sidebarWidth,
         currentDirectory: state.currentDirectory,

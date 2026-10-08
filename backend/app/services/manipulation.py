@@ -1,4 +1,5 @@
 import polars as pl
+from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Union
 import uuid
@@ -31,7 +32,7 @@ class DataManipulationEngine:
     ) -> RowsResponse:
         """Get paginated rows with optional filtering and sorting."""
         lf = dataset_manager.get_dataframe(dataset_id)
-        if not lf:
+        if lf is None:
             raise ValueError(f"Dataset {dataset_id} not found")
         
         dataset = dataset_manager.get_dataset(dataset_id)
@@ -95,7 +96,7 @@ class DataManipulationEngine:
     def add_row(self, dataset_id: str, request: AddRowRequest) -> RowData:
         """Add a new row to the dataset."""
         lf = dataset_manager.get_dataframe(dataset_id)
-        if not lf:
+        if lf is None:
             raise ValueError(f"Dataset {dataset_id} not found")
         
         dataset = dataset_manager.get_dataset(dataset_id)
@@ -119,7 +120,7 @@ class DataManipulationEngine:
     def update_row(self, dataset_id: str, row_id: str, request: UpdateRowRequest) -> RowData:
         """Update an existing row."""
         lf = dataset_manager.get_dataframe(dataset_id)
-        if not lf:
+        if lf is None:
             raise ValueError(f"Dataset {dataset_id} not found")
         
         dataset = dataset_manager.get_dataset(dataset_id)
@@ -287,7 +288,7 @@ class DataManipulationEngine:
     def commit_changes(self, dataset_id: str) -> Dict[str, Any]:
         """Commit pending changes to disk."""
         lf = dataset_manager.get_dataframe(dataset_id)
-        if not lf:
+        if lf is None:
             raise ValueError(f"Dataset {dataset_id} not found")
         
         dataset = dataset_manager.get_dataset(dataset_id)
@@ -308,9 +309,11 @@ class DataManipulationEngine:
         dataset.columns_schema = schema
         dataset.stats = stats
         dataset.row_count = stats.row_count
-        dataset.size_bytes = Path(dataset.path).stat().st_size
+        file_stat = Path(dataset.path).stat()
+        dataset.size_bytes = file_stat.st_size
+        dataset.last_modified = datetime.fromtimestamp(file_stat.st_mtime)
         
-        dataset_manager.dataframes[dataset_id] = new_lf
+        dataset_manager.register(dataset, new_lf, dataset_manager.options.get(dataset_id))
         
         # Clear pending changes
         self._pending_changes[dataset_id] = []

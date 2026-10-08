@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from "axios"
 import toast from "react-hot-toast"
 
-const API_BASE = "/api"
+const API_BASE = import.meta.env.VITE_API_URL || "/api"
 
 class ApiClient {
   private client: AxiosInstance

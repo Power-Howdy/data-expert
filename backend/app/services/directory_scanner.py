@@ -4,9 +4,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 import logging
 
-from app.models.schemas import (
-    DirectoryNode, ScanRequest, ScanResponse, DataFormat
-)
+from app.models.schemas import DirectoryNode, ScanRequest, ScanResponse
 from app.services.data_loader import detect_format
 from app.core.config import settings
 
@@ -78,12 +76,15 @@ class DirectoryScanner:
         
         for entry in entries:
             if entry.is_dir():
+                if entry.name.startswith("."):
+                    continue
                 if recursive:
                     child = self._scan_directory(
                         entry, recursive, max_depth, current_depth + 1
                     )
-                    children.append(child)
-                else:
+                    if child.children:
+                        children.append(child)
+                elif self._contains_data(entry):
                     children.append(DirectoryNode(
                         name=entry.name,
                         path=str(entry),
@@ -92,13 +93,15 @@ class DirectoryScanner:
                     ))
             else:
                 fmt = detect_format(str(entry))
+                if fmt is None:
+                    continue
                 stat = entry.stat()
                 children.append(DirectoryNode(
                     name=entry.name,
                     path=str(entry),
                     is_directory=False,
                     size=stat.st_size,
-                    format=fmt if fmt in [f for f in DataFormat] else None,
+                    format=fmt,
                     modified=datetime.fromtimestamp(stat.st_mtime)
                 ))
         
@@ -109,6 +112,27 @@ class DirectoryScanner:
             children=children
         )
     
+    def _contains_data(self, path: Path) -> bool:
+        """True when a folder holds a recognized data file at any depth."""
+        stack = [path]
+        while stack:
+            current = stack.pop()
+            try:
+                entries = list(current.iterdir())
+            except (PermissionError, OSError):
+                logger.warning(f"Permission denied: {current}")
+                continue
+            for entry in entries:
+                try:
+                    if entry.is_dir():
+                        if not entry.name.startswith("."):
+                            stack.append(entry)
+                    elif detect_format(str(entry)) is not None:
+                        return True
+                except (PermissionError, OSError):
+                    continue
+        return False
+
     def _collect_data_files(self, node: DirectoryNode) -> List[DirectoryNode]:
         """Collect all data files from tree."""
         files = []
