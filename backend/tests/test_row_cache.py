@@ -40,9 +40,9 @@ def test_far_windows_use_polars_and_near_windows_stream(parquet, monkeypatch):
     monkeypatch.setattr(cache, "_stream", lambda *a: streamed.append(a[3]) or original(*a))
     cache.rows(path, pl.scan_parquet(path), True, 1_500, 10, ROWS)
     assert streamed == []  # 1,500 rows into a 2,000-row group: Polars is cheaper
-    cache.rows(path, pl.scan_parquet(path), True, 0, 10, ROWS)
-    assert streamed == [0]
-    assert cache.rows(path, pl.scan_parquet(path), True, 1_000, 10, ROWS).equals(df.slice(1_000, 10))
+    cache.rows(path, pl.scan_parquet(path), True, 4_000, 10, ROWS)
+    assert streamed == [0]  # start of the third row group
+    assert cache.rows(path, pl.scan_parquet(path), True, 5_000, 10, ROWS).equals(df.slice(5_000, 10))
     assert streamed == [0, 1]  # continues from the open reader
 
 

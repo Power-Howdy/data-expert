@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Open-source project files: license, contributing guide, code of conduct, security policy, issue and pull
   request templates, and CI.
 - Documentation under `docs/`.
+- **Optimize for browsing**: for large files whose deep pages load slowly (Parquet written as huge row groups,
+  or big CSV/JSON files), the Browse tab offers to build a copy with small row groups in the background. With it,
+  any page of a 3 GB, 1M-row file loads in under 0.15 s (down from 1–2 s). The copy is rebuilt after saving and
+  deleted when the dataset is unloaded or you click Remove.
 
 ### Fixed
 
@@ -22,6 +26,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- Much faster opening and browsing of large files. Opening a file reads only metadata: 0.07 s, down from
+  14.8 s, for a 3 GB, 1M-row Parquet file. Row pages come from a window cache with a streaming Parquet reader, so
+  first pages, next pages and opening a row take under 0.1 s, down from 2–4 s. Saving a version no longer rescans
+  the file. Missing % and duplicate counts are skipped for large non-Parquet files.
 - The Search button on the Browse tab shows and hides the search box, like the AI and Filters buttons.
 
 ## [1.0.0]

@@ -9,7 +9,10 @@ export function OverviewStats({ overview }: { overview: AnalyticsOverview }) {
       <StatCard title="Total Rows" value={formatNumber(overview.row_count)} icon={<Database className="h-5 w-5" />} />
       <StatCard title="Columns" value={String(overview.column_count)} icon={<BarChart className="h-5 w-5" />} />
       <StatCard title="Memory" value={formatBytes(overview.memory_bytes)} icon={<TrendingUp className="h-5 w-5" />} />
-      <StatCard title="Missing %" value={formatPercent(overview.missing_percentage)} icon={<AlertTriangle className="h-5 w-5" />} />
+      <StatCard
+        title="Missing %" icon={<AlertTriangle className="h-5 w-5" />}
+        value={overview.missing_percentage == null ? "—" : formatPercent(overview.missing_percentage)}
+      />
     </div>
   )
 }

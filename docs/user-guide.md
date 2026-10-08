@@ -57,6 +57,12 @@ The **Browse** tab shows rows page by page.
 - **Filters:** click **Filters** and add conditions. Operators: equals, not equals, greater/less than (or equal),
   contains, starts with, ends with, in list, is null and is not null. All conditions must match.
 - **Paging:** change the page size and move between pages at the bottom.
+- **Optimize for browsing:** some large files load deep pages slowly: Parquet files written as one huge block of
+  rows, and big CSV or JSON files. For these, the Browse tab offers **Optimize for browsing**. It builds a copy of
+  the file with small blocks in the background (about a minute for 3 GB; it needs up to the file's size on disk,
+  in `backend/.data_expert/browse_copies/`). After that, every page loads in a fraction of a second. The copy is
+  rebuilt when you save changes and deleted when you unload the dataset or click **Remove**. Click **Not now** to
+  hide the offer for that file.
 
 ## Searching
 

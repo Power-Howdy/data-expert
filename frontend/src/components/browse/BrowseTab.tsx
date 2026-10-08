@@ -18,6 +18,8 @@ import { AIAssistant } from "./AIAssistant"
 import { ViewBanner } from "./ViewBanner"
 import { PendingChangesBar } from "./PendingChangesBar"
 import { BrowseDialogs, type BrowseDialog } from "./BrowseDialogs"
+import { BrowseCopyNotice } from "./BrowseCopyNotice"
+import { useBrowseCopy } from "./useBrowseCopy"
 
 export function BrowseTab() {
   const dataset = useSelectedDataset()
@@ -26,6 +28,7 @@ export function BrowseTab() {
   const columns = useDatasetColumns(schema)
   const data = useBrowseData(dataset, ai.view)
   const search = useSearch(dataset?.id)
+  const browseCopy = useBrowseCopy(dataset)
   const [showSearch, setShowSearch] = React.useState(false)
   const [showFilters, setShowFilters] = React.useState(false)
   const [showAI, setShowAI] = React.useState(false)
@@ -59,6 +62,7 @@ export function BrowseTab() {
       />
       <div className="shrink-0 space-y-5 empty:hidden">
         <PendingChangesBar datasetId={dataset.id} />
+        {!ai.view && <BrowseCopyNotice {...browseCopy} fileBytes={dataset.size_bytes} />}
         {showAI && <AIAssistant ai={ai} />}
         {showSearch && !ai.view && (
           <SearchBar query={search.query} loading={search.loading} onQueryChange={search.setQuery} onSearch={search.search} />

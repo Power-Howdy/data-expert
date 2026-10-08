@@ -19,6 +19,7 @@ from app.services.export import export_engine
 from app.services.directory_scanner import directory_scanner
 from app.services.ai.views import view_store
 from app.services.row_cache import row_cache
+from app.services.browse_copy import browse_copies
 from app.services.profile_store import insights_store
 from app.api.ai_routes import router as ai_router
 from app.api.version_routes import router as version_router
@@ -26,7 +27,7 @@ from app.models.version_schemas import CommitRequest, VersionCommit
 from app.models.schemas import (
     Dataset, LoadDatasetRequest, ScanRequest, ScanResponse,
     PaginationParams, FilterParams, SortParams, FilterRequest, SortRequest,
-    SearchRequest, SearchResponse, SearchIndexStatus, RowsResponse, RowData,
+    SearchRequest, SearchResponse, SearchIndexStatus, BrowseCopyStatus, RowsResponse, RowData,
     AddRowRequest, UpdateRowRequest, ReplaceRequest, TransformRequest,
     CombineRequest, SeparateRequest, ExportRequest,
     DatasetProfile, AnalyticsOverview, ErrorResponse, SuccessResponse,
@@ -141,12 +142,13 @@ def load_dataset(request: LoadDatasetRequest):
 
 
 @app.delete("/api/datasets/{dataset_id}", response_model=SuccessResponse)
-async def unload_dataset(dataset_id: str):
+def unload_dataset(dataset_id: str):
     """Unload a dataset."""
     dataset = dataset_manager.get_dataset(dataset_id)
     success = dataset_manager.unload_dataset(dataset_id)
     if dataset:
         row_cache.release(dataset.path)
+        browse_copies.delete(dataset_id)
     if not success:
         raise HTTPException(status_code=404, detail=f"Dataset {dataset_id} not found")
     analytics_engine.forget_profile(dataset_id)
@@ -255,6 +257,30 @@ def build_search_index(dataset_id: str):
     """Start building the search index in the background."""
     get_dataset(dataset_id)
     return _edit(search_engine.build_index, dataset_id)
+
+
+# ==================== Browse copy ====================
+
+@app.get("/api/datasets/{dataset_id}/browse-copy", response_model=BrowseCopyStatus)
+def browse_copy_status(dataset_id: str):
+    """Whether the dataset has (or would benefit from) a copy with small row groups for fast paging."""
+    get_dataset(dataset_id)
+    return _edit(browse_copies.status, dataset_id)
+
+
+@app.post("/api/datasets/{dataset_id}/browse-copy", response_model=BrowseCopyStatus)
+def build_browse_copy(dataset_id: str):
+    """Start building the browse copy in the background."""
+    get_dataset(dataset_id)
+    return _edit(browse_copies.build, dataset_id)
+
+
+@app.delete("/api/datasets/{dataset_id}/browse-copy", response_model=BrowseCopyStatus)
+def delete_browse_copy(dataset_id: str):
+    """Stop building and delete the browse copy."""
+    get_dataset(dataset_id)
+    browse_copies.delete(dataset_id)
+    return _edit(browse_copies.status, dataset_id)
 
 
 # ==================== Analytics ====================

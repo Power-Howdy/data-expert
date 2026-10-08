@@ -84,6 +84,17 @@ Prefix: `/api/datasets/{id}/versions`. A `{ref}` is a commit id, a unique prefix
 | GET | `/api/search/indexing` | Builds in progress (or failed), by dataset id |
 | GET | `/api/datasets/{id}/search/suggest?q=&limit=10` | Term suggestions (indexed files only) |
 
+## Browse copy
+
+An optional copy of a large file with small row groups, so every page loads quickly. See
+[Architecture](architecture.md#request-flow-browsing-a-page).
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/datasets/{id}/browse-copy` | Status: `state` (`missing`/`building`/`ready`/`error`), `needed` (deep pages are slow without one), `done`, `total`, `size_bytes`, `error` |
+| POST | `/api/datasets/{id}/browse-copy` | Start building the copy in the background; returns the status |
+| DELETE | `/api/datasets/{id}/browse-copy` | Cancel a build and delete the copy; returns the status |
+
 ## Analytics
 
 | Method | Path | Description |

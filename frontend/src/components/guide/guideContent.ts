@@ -32,6 +32,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
       "Click a row to open it in a side panel with every field, including nested lists and objects.",
       "Use Filters to keep only rows that match conditions on columns (equals, contains, greater than, empty, ...).",
       "Change the page size or move between pages at the bottom of the table.",
+      "If pages deep in a large file load slowly, click Optimize for browsing. A copy with small blocks is built in the background (it needs up to the file's size on disk), and then every page loads instantly. Remove it any time.",
     ],
   },
   {

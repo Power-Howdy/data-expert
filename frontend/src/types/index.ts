@@ -38,8 +38,8 @@ export interface DatasetStats {
   row_count: number
   column_count: number
   memory_bytes: number
-  missing_percentage: number
-  duplicate_rows: number
+  missing_percentage: number | null
+  duplicate_rows: number | null
 }
 
 export interface Dataset {
@@ -111,6 +111,17 @@ export interface SearchIndexStatus {
   error: string | null
 }
 
+/** A copy of the file with small row groups, so any page loads quickly. */
+export interface BrowseCopyStatus {
+  state: "missing" | "building" | "ready" | "error"
+  /** Whether deep pages are slow without a copy. */
+  needed: boolean
+  done: number
+  total: number
+  size_bytes: number
+  error: string | null
+}
+
 export interface SearchResponse {
   results: SearchResult[]
   total: number
@@ -125,8 +136,8 @@ export interface AnalyticsOverview {
   row_count: number
   column_count: number
   memory_bytes: number
-  missing_percentage: number
-  duplicate_rows: number
+  missing_percentage: number | null
+  duplicate_rows: number | null
   column_types: Record<string, number>
 }
 

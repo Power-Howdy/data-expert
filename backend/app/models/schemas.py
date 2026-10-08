@@ -147,6 +147,15 @@ class SearchIndexStatus(BaseModel):
     error: Optional[str] = None
 
 
+class BrowseCopyStatus(BaseModel):
+    state: Literal["missing", "building", "ready", "error"]
+    needed: bool = False
+    done: int = 0
+    total: int = 0
+    size_bytes: int = 0
+    error: Optional[str] = None
+
+
 class SearchResponse(BaseModel):
     results: List[SearchResult]
     total: int

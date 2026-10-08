@@ -65,9 +65,25 @@ needed.
 ### Request flow: browsing a page
 
 1. `GET /api/datasets/{id}/rows?offset=&limit=&filters=&sorts=` reaches `manipulation_engine.get_rows`.
-2. The registry returns the cached `LazyFrame` for the dataset.
-3. Pending edits are applied lazily (`changes.py`), then filters, sorts and the slice.
-4. Polars collects only the requested slice; rows are returned with their stable row id.
+2. Without filters, sorts or pending edits, rows come from `row_cache.py`:
+   - The file is read in 1,000-row windows per row group, and recent windows are kept in an LRU cache.
+   - Parquet windows near the start of a row group, or right after the previous read, come from pyarrow's
+     buffered streaming reader, which decodes page by page.
+   - Other windows come from a Polars slice. Polars decodes a whole row group, so its cost doesn't grow with the
+     offset.
+   - On files written as one huge row group, this turns a multi-second first page into about 50 ms.
+   - Deep pages in such files still take 1–2 s, and large text formats are scanned from the start. For these,
+     the user can opt in to a **browse copy** (`browse_copy.py`). It is the same rows rewritten as Parquet with
+     10,000-row row groups in `backend/.data_expert/browse_copies/<dataset id>/`, built on a background thread.
+     It is keyed by the file's size and modification time, so it is only used for the version it was built from.
+     When one exists, pages are read from it and any page takes under 0.15 s. Saving a version deletes the copy
+     before the file is replaced, then rebuilds it; unloading the dataset deletes it.
+3. Otherwise pending edits are applied lazily (`changes.py`), then filters, sorts and the slice, and Polars
+   collects only the requested slice.
+4. Rows are returned with their stable row id.
+
+Opening a file reads only metadata: the schema, plus the row count, size and null counts from the Parquet footer.
+Files of other formats under 256 MB also get a full null and duplicate count.
 
 ### Request flow: saving edits
 
@@ -94,7 +110,7 @@ Details: [AI assistant](ai-assistant.md).
 ### Concurrency
 
 Endpoints are synchronous functions; FastAPI runs them in a thread pool. Shared state is protected with locks
-(`RLock` in version control, the settings store and the function library). Search index builds and AI jobs run
+(`RLock` in version control, the settings store and the function library). Search index builds, browse copies and AI jobs run
 on background threads and report progress through polling endpoints.
 
 ## Frontend
@@ -117,6 +133,7 @@ A Vite + React + TypeScript single-page app. See the [Frontend guide](frontend.m
 | `backend/.data_expert/functions.json` | Generated library functions |
 | `backend/.data_expert/profiles/`, `insights/` | Cached profiles and AI insights |
 | `backend/.data_expert/search_indexes/` | Tantivy indexes of large files |
+| `backend/.data_expert/browse_copies/` | Opt-in copies of large files with small row groups, for fast paging |
 | `<data folder>/.data-expert-history/<file>/` | Version history of each tracked file |
 
 None of this belongs in version control; all of it is in `.gitignore`.

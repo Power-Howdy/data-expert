@@ -19,6 +19,7 @@ from app.models.version_schemas import (
     RowDiff, SaveVersionRequest, SchemaChange, VersionColumn, VersionCommit, VersionDiff, VersionHistory, VersionInfo,
     VersionRows, VersionStats,
 )
+from app.services.browse_copy import browse_copies
 from app.services.changes import IDX
 from app.services.data_loader import data_loader, dataset_manager
 from app.services.row_cache import row_cache
@@ -117,21 +118,27 @@ class VersionControl:
         commit_id = self._new_id(message)
         tmp = path.with_name(f".{path.stem}.dx-tmp{path.suffix}")
         undo_meta: Dict[str, Any] = dict(fields.pop("undo_meta", {}))
+        had_copy = False
         try:
             write_frame(lf, tmp, dataset.format)
             if prepare:
                 undo_meta.update(prepare(commit_id))
             if undo == "snapshot":
                 repo.take_snapshot(commit_id)
+            had_copy = browse_copies.delete(dataset.id)
             row_cache.release(str(path))
             os.replace(tmp, path)
         except Exception:
             repo.remove_snapshot(commit_id)
             shutil.rmtree(repo.undo_dir(commit_id), ignore_errors=True)
+            if had_copy:
+                browse_copies.build(dataset.id)
             raise
         finally:
             tmp.unlink(missing_ok=True)
         reloaded = self._reload(dataset)
+        if had_copy:
+            browse_copies.build(reloaded.id)
         commit = self._commit(repo, reloaded, commit_id, kind, message, undo=undo, undo_meta=undo_meta, **fields)
         repo.add(commit, ops)
         self._prune(repo)

@@ -26,6 +26,10 @@ Vite frontend (`frontend/`). Read [docs/architecture.md](docs/architecture.md) b
   on commit, through `services/versioning/service.py`: temporary file, then `os.replace`.
 - Version history lives in `<data folder>/.data-expert-history/<file>/` and is linear. Row edits store reverse
   deltas; transforms store hardlinked snapshots. See [docs/version-control.md](docs/version-control.md).
+- Opening a file must stay instant: `get_stats` reads metadata (Parquet footer), never the data, for large files.
+  Plain row pages go through `services/row_cache.py`. Its streaming readers hold files open, so call
+  `row_cache.release(path)` before replacing a data file. Opt-in browse copies (`services/browse_copy.py`) are
+  read instead when they match the file; `browse_copies.delete(id)` stops a build that holds the file open.
 - Search: files under 256 MB are scanned with Polars (including pending edits); larger files use a background
   Tantivy index. Call `search_engine.delete_index` before replacing a data file, because Windows locks open files.
 - Generated AI functions must pass `services/functions/sandbox.py`. New built-ins go in

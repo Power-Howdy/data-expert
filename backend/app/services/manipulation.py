@@ -9,6 +9,7 @@ from app.models.ai_schemas import PlanStep, TransformPlan
 from app.models.schemas import (
     ChangeItem, ChangesSummary, DataFormat, FilterParams, ReplaceRequest, RowData, RowsResponse, SortParams,
 )
+from app.services.browse_copy import browse_copies
 from app.services.row_cache import row_cache
 from app.models.version_schemas import VersionCommit
 from app.services.changes import ADDED_BASE, IDX, apply_changes, coerce, replace_match, with_index
@@ -85,6 +86,9 @@ class DataManipulationEngine:
         dataset = dataset_manager.get_dataset(dataset_id)
         if not dataset:
             return lf.slice(offset, limit).collect()
+        copy = browse_copies.ready_path(dataset)
+        if copy:
+            return row_cache.rows(copy, pl.scan_parquet(copy), True, offset, limit, total)
         return row_cache.rows(dataset.path, lf, dataset.format == DataFormat.PARQUET, offset, limit, total)
 
     @staticmethod
