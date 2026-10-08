@@ -27,7 +27,7 @@
     "@uiw/react-codemirror": "^4.25.12",
     "axios": "^1.6.0",
     "clsx": "^2.1.0",
-    "date-fns": "^3.2.0",
+    "date-fns": "^4.4.0",
     "lucide-react": "^0.303.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
