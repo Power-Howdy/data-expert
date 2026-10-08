@@ -1,5 +1,5 @@
 "use client"
-import { BarChart3, Combine, Download, GitBranch, Moon, PanelLeft, Sun, Table2 } from "lucide-react"
+import { BarChart3, HelpCircle, Combine, Download, GitBranch, Moon, PanelLeft, Sun, Table2 } from "lucide-react"
 import { useDatasetStore, useUIStore } from "@/stores/useStore"
 import { Button } from "@/components/ui/button"
 import { AISettingsButton } from "@/components/settings/AISettingsButton"
@@ -51,6 +51,12 @@ export function Header() {
           ))}
         </nav>
 
+        <Button
+          variant="ghost" size="icon" onClick={() => setActiveTab("guide")} aria-label="User guide" title="User guide"
+          className={cn(activeTab === "guide" && "bg-muted text-foreground")}
+        >
+          <HelpCircle className="h-5 w-5" />
+        </Button>
         <AISettingsButton />
         <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
           {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}

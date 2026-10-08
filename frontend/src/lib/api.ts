@@ -107,6 +107,11 @@ class ApiClient {
     return data
   }
 
+  async health(): Promise<{ status: string; version: string }> {
+    const { data } = await this.client.get("/health", { silent: true, timeout: 5000 } as object)
+    return data
+  }
+
   async getIndexing(): Promise<Record<string, SearchIndexStatus>> {
     const { data } = await this.client.get("/search/indexing", { silent: true } as object)
     return data
