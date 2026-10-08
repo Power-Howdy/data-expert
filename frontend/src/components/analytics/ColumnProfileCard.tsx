@@ -17,16 +17,16 @@ export function ColumnProfileCard({ column, onClick, active }: ColumnProfileCard
   return (
     <Card className={cn("cursor-pointer transition-all", active && "ring-2 ring-primary")} onClick={onClick}>
       <CardContent className="p-4">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <h4 className="font-medium">{column.name}</h4>
+        <div className="flex items-start justify-between gap-4">
+          <div className="shrink-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h4 className="break-all font-medium">{column.name}</h4>
               <Badge variant="outline" className="text-xs">{column.type}</Badge>
               {column.null_percentage > 0 && (
                 <Badge variant="secondary" className="text-xs">{formatPercent(column.null_percentage)} null</Badge>
               )}
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="mt-1 whitespace-nowrap text-sm text-muted-foreground">
               {formatNumber(column.unique_count)} unique · {formatPercent(column.unique_percentage)} unique
             </p>
           </div>

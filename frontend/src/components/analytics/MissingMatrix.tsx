@@ -11,10 +11,11 @@ export function MissingMatrix({ matrix, columns }: MissingMatrixProps) {
       columns={columns}
       getCell={(row, col) => {
         const value = matrix[row]?.[col] ?? 0
-        const total = matrix[row]?.[row] ?? 1
+        const total = matrix[row]?.[row] ?? 0
+        const ratio = total > 0 ? value / total : 0
         return {
-          label: `${((value / total) * 100).toFixed(1)}%`,
-          color: `rgba(239, 68, 68, ${(value / total) * 0.5})`,
+          label: `${(ratio * 100).toFixed(1)}%`,
+          color: `rgba(239, 68, 68, ${ratio * 0.5})`,
         }
       }}
     />
