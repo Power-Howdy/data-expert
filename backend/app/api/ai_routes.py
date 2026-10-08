@@ -141,6 +141,23 @@ def delete_view(view_id: str):
     return {"success": view_store.delete(view_id)}
 
 
+@router.post("/views/{view_id}/apply")
+def apply_view(view_id: str):
+    """Record the view's pipeline as a pending transform of its dataset (saved to the file on commit)."""
+    from app.services.manipulation import manipulation_engine
+
+    try:
+        info, steps = view_store.lineage(view_id)
+        _require_dataset(info.dataset_id)
+        count = manipulation_engine.transform(
+            info.dataset_id, [s.model_dump(include={"op", "params"}) for s in steps], info.prompt
+        )
+    except (ValueError, TypeError, pl.exceptions.PolarsError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    view_store.drop_dataset(info.dataset_id)
+    return {"success": True, "steps": count}
+
+
 @router.post("/datasets/{dataset_id}/save-as", response_model=Dataset)
 def save_as(dataset_id: str, request: SaveAsRequest):
     _require_dataset(dataset_id)

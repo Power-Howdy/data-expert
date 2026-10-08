@@ -1,6 +1,7 @@
 import * as React from "react"
 import toast from "react-hot-toast"
 import { aiApi } from "@/lib/aiApi"
+import { useEditStore } from "@/stores/useEditStore"
 import type { AIJob, DataView, TransformPlan } from "@/types/ai"
 
 const POLL_MS = 800
@@ -12,6 +13,7 @@ export function useAITransform(datasetId: string | undefined) {
   const [job, setJob] = React.useState<AIJob | null>(null)
   const [view, setView] = React.useState<DataView | null>(null)
   const [submitted, setSubmitted] = React.useState("")
+  const [applying, setApplying] = React.useState(false)
 
   React.useEffect(() => {
     setPrompt("")
@@ -68,9 +70,25 @@ export function useAITransform(datasetId: string | undefined) {
     setJob(null)
   }
 
+  const applyView = async () => {
+    if (!view || !datasetId) return
+    setApplying(true)
+    try {
+      await aiApi.applyView(view.id)
+      setView(null)
+      setJob(null)
+      await useEditStore.getState().edited(datasetId)
+      toast.success("Applied to the dataset (not yet saved to file)")
+    } catch {
+      // error toast comes from the API client
+    } finally {
+      setApplying(false)
+    }
+  }
+
   return {
     prompt, setPrompt, plan, setPlan, planning, makePlan, run, cancel,
-    job, running: job?.status === "running", view, discardView,
+    job, running: job?.status === "running", view, discardView, applyView, applying,
   }
 }
 

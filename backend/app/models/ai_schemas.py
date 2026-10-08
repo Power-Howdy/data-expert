@@ -8,7 +8,8 @@ from app.models.schemas import ColumnSchema, FilterParams
 
 # ==================== Settings ====================
 
-ProviderKind = Literal["openai", "openrouter", "ollama", "lmstudio", "custom"]
+# Id of a preset in services/ai/providers.py, or "custom".
+ProviderKind = str
 
 
 class AIProvider(BaseModel):
@@ -41,6 +42,7 @@ class AISettings(BaseModel):
     providers: List[AIProvider]
     model: AIModelSettings = AIModelSettings()
     prompts: AIPrompts
+    defaults_seen: List[str] = Field(default_factory=list)
 
 
 class AIProviderPublic(AIProvider):
@@ -57,6 +59,7 @@ class AISettingsPublic(BaseModel):
     prompts: AIPrompts
     default_prompts: AIPrompts
     configured: bool
+    presets: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 class AIProviderUpdate(BaseModel):

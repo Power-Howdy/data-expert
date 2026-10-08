@@ -1,6 +1,19 @@
 import type { ColumnSchema } from "./index"
 
-export type ProviderKind = "openai" | "openrouter" | "ollama" | "lmstudio" | "custom"
+/** Id of a provider preset, or "custom". */
+export type ProviderKind = string
+
+export interface ProviderPreset {
+  id: string
+  name: string
+  base_url: string
+  model: string
+  local: boolean
+  env_key: string
+  auth: "bearer" | "anthropic" | "azure"
+  key_url: string
+  note: string
+}
 
 export interface AIProvider {
   id: string
@@ -37,6 +50,7 @@ export interface AISettings {
   prompts: AIPrompts
   default_prompts: AIPrompts
   configured: boolean
+  presets: ProviderPreset[]
 }
 
 export interface ProviderTestResult {

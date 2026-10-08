@@ -10,12 +10,14 @@ interface BrowseTableProps {
   schema: ColumnSchema[]
   loading?: boolean
   rowOffset?: number
+  /** Makes the record drawer editable. */
+  datasetId?: string
 }
 
-export function BrowseTable({ columns, rows, schema, loading, rowOffset = 0 }: BrowseTableProps) {
+export function BrowseTable({ columns, rows, schema, loading, rowOffset = 0, datasetId }: BrowseTableProps) {
   const [selected, setSelected] = React.useState<RowData | null>(null)
   const closeDrawer = React.useCallback(() => setSelected(null), [])
-  const index = selected ? rows.indexOf(selected) : -1
+  const index = selected ? rows.findIndex((row) => row.id === selected.id) : -1
 
   return (
     <>
@@ -29,8 +31,10 @@ export function BrowseTable({ columns, rows, schema, loading, rowOffset = 0 }: B
       />
       {selected && (
         <RecordDrawer
+          key={selected.id}
           record={selected}
           schema={schema}
+          datasetId={datasetId}
           title={index >= 0 ? `Row ${(rowOffset + index + 1).toLocaleString()}` : "Record"}
           onClose={closeDrawer}
         />

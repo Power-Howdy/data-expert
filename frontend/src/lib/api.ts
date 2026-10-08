@@ -155,47 +155,6 @@ class ApiClient {
     return data
   }
 
-  // Manipulation
-  async addRow(id: string, data: Record<string, any>) {
-    const { data: result } = await this.client.post(`/datasets/${id}/rows`, { data })
-    return result
-  }
-
-  async updateRow(id: string, rowId: string, data: Record<string, any>) {
-    const { data: result } = await this.client.put(`/datasets/${id}/rows/${rowId}`, { data })
-    return result
-  }
-
-  async deleteRow(id: string, rowId: string) {
-    const { data } = await this.client.delete(`/datasets/${id}/rows/${rowId}`)
-    return data
-  }
-
-  async replaceValues(id: string, column: string, oldValue: any, newValue: any, caseSensitive = true) {
-    const { data } = await this.client.post(`/datasets/${id}/replace`, {
-      column,
-      old_value: oldValue,
-      new_value: newValue,
-      case_sensitive: caseSensitive,
-    })
-    return data
-  }
-
-  async transform(id: string, operations: any[]) {
-    const { data } = await this.client.post(`/datasets/${id}/transform`, { operations })
-    return data
-  }
-
-  async commitChanges(id: string) {
-    const { data } = await this.client.post(`/datasets/${id}/commit`)
-    return data
-  }
-
-  async discardChanges(id: string) {
-    const { data } = await this.client.post(`/datasets/${id}/discard`)
-    return data
-  }
-
   // Combine/Separate
   async combineDatasets(request: any) {
     const { data } = await this.client.post("/datasets/combine", request)

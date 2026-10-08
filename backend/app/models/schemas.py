@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, List, Dict, Any, Literal, Union
 from pydantic import BaseModel, Field
 from datetime import datetime
 import uuid
@@ -167,12 +167,30 @@ class UpdateRowRequest(BaseModel):
 class ReplaceRequest(BaseModel):
     column: str
     old_value: Any
-    new_value: Any
+    new_value: Any = None
     case_sensitive: bool = True
+    mode: Literal["exact", "contains", "regex"] = "exact"
 
 
 class TransformRequest(BaseModel):
+    """Function-library steps: [{"op": "<function name>", "params": {...}}, ...]."""
     operations: List[Dict[str, Any]]
+    description: str = ""
+
+
+class ChangeItem(BaseModel):
+    type: str
+    label: str
+
+
+class ChangesSummary(BaseModel):
+    total: int = 0
+    added: int = 0
+    updated: int = 0
+    deleted: int = 0
+    replaced: int = 0
+    transformed: int = 0
+    items: List[ChangeItem] = []
 
 
 class CombineRequest(BaseModel):

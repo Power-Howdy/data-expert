@@ -1,12 +1,12 @@
-import { Plus } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { ChoiceChip } from "@/components/common/ChoiceChip"
 import type { SettingsDraft } from "./useSettingsDraft"
 import { ProviderForm } from "./ProviderForm"
+import { ProviderPresetPicker } from "./ProviderPresetPicker"
 
 export function ProviderSettings({ draft }: { draft: SettingsDraft }) {
   const { draft: settings, provider } = draft
   if (!settings) return null
+  const preset = settings.presets.find((p) => p.id === provider?.kind)
 
   return (
     <div className="space-y-5">
@@ -18,19 +18,18 @@ export function ProviderSettings({ draft }: { draft: SettingsDraft }) {
               {p.name}
             </ChoiceChip>
           ))}
-          <Button variant="outline" size="sm" onClick={draft.addProvider}>
-            <Plus className="h-4 w-4" /> Custom
-          </Button>
+          <ProviderPresetPicker presets={settings.presets} onPick={draft.addProvider} />
         </div>
         <p className="text-xs font-semibold text-muted-foreground">
-          Any OpenAI-compatible endpoint works: OpenAI, OpenRouter, Ollama, LM Studio, vLLM, llama.cpp server.
+          {settings.presets.length} presets, plus any other OpenAI-compatible endpoint.
         </p>
       </div>
       {provider && (
         <ProviderForm
           provider={provider}
+          preset={preset}
           onChange={draft.updateProvider}
-          onRemove={provider.kind === "custom" ? () => draft.removeProvider(provider.id) : undefined}
+          onRemove={settings.providers.length > 1 ? () => draft.removeProvider(provider.id) : undefined}
         />
       )}
     </div>

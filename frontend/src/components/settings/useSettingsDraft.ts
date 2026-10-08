@@ -2,7 +2,7 @@ import * as React from "react"
 import toast from "react-hot-toast"
 import { aiApi } from "@/lib/aiApi"
 import { useAIStore } from "@/stores/useAIStore"
-import type { AIModelSettings, AIPrompts, AIProvider, AISettings } from "@/types/ai"
+import type { AIModelSettings, AIPrompts, AIProvider, AISettings, ProviderPreset } from "@/types/ai"
 
 export function useSettingsDraft() {
   const { settings, setSettings, closeSettings } = useAIStore()
@@ -21,11 +21,15 @@ export function useSettingsDraft() {
       providers: d.providers.map((p) => (p.id === d.active_provider_id ? { ...p, ...changes } : p)),
     }))
 
-  const addProvider = () => {
-    const id = `custom-${Date.now().toString(36)}`
-    const custom: AIProvider = { id, name: "Custom endpoint", kind: "custom", base_url: "http://localhost:8080/v1", model: "" }
-    patch((d) => ({ providers: [...d.providers, custom], active_provider_id: id }))
-  }
+  const addProvider = (preset: ProviderPreset | null = null) =>
+    patch((d) => {
+      const base = preset?.id ?? "custom"
+      const id = d.providers.some((p) => p.id === base) || !preset ? `${base}-${Date.now().toString(36)}` : base
+      const added: AIProvider = preset
+        ? { id, name: preset.name, kind: preset.id, base_url: preset.base_url, model: preset.model }
+        : { id, name: "Custom endpoint", kind: "custom", base_url: "http://localhost:8080/v1", model: "" }
+      return { providers: [...d.providers, added], active_provider_id: id }
+    })
 
   const removeProvider = (id: string) =>
     patch((d) => {

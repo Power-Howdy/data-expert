@@ -27,7 +27,7 @@ from app.models.schemas import (
     AddRowRequest, UpdateRowRequest, ReplaceRequest, TransformRequest,
     CombineRequest, SeparateRequest, ExportRequest,
     DatasetProfile, AnalyticsOverview, ErrorResponse, SuccessResponse,
-    DataFormat
+    DataFormat, ChangesSummary,
 )
 
 
@@ -145,6 +145,7 @@ async def unload_dataset(dataset_id: str):
     analytics_engine.forget_profile(dataset_id)
     insights_store.delete(dataset_id)
     view_store.drop_dataset(dataset_id)
+    manipulation_engine.discard_changes(dataset_id)
     return SuccessResponse(message=f"Dataset {dataset_id} unloaded")
 
 
@@ -306,74 +307,97 @@ def get_outliers(
 
 # ==================== Data Manipulation ====================
 
+def _edit(fn, *args):
+    try:
+        return fn(*args)
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=str(e).strip("'\""))
+    except (ValueError, TypeError, pl.exceptions.PolarsError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/datasets/{dataset_id}/rows/{row_id}", response_model=RowData)
+def get_row(dataset_id: str, row_id: str):
+    """One row, including pending edits."""
+    get_dataset(dataset_id)
+    return _edit(manipulation_engine.get_row, dataset_id, row_id)
+
+
 @app.post("/api/datasets/{dataset_id}/rows", response_model=RowData)
 def add_row(dataset_id: str, request: AddRowRequest):
-    """Add a new row."""
-    dataset = get_dataset(dataset_id)
-    try:
-        return manipulation_engine.add_row(dataset_id, request)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    """Add a row (pending until committed)."""
+    get_dataset(dataset_id)
+    return _edit(manipulation_engine.add_row, dataset_id, request.data)
 
 
 @app.put("/api/datasets/{dataset_id}/rows/{row_id}", response_model=RowData)
 def update_row(dataset_id: str, row_id: str, request: UpdateRowRequest):
-    """Update a row."""
-    dataset = get_dataset(dataset_id)
-    try:
-        return manipulation_engine.update_row(dataset_id, row_id, request)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    """Change fields of a row (pending until committed); only changed fields are recorded."""
+    get_dataset(dataset_id)
+    return _edit(manipulation_engine.update_row, dataset_id, row_id, request.data)
 
 
 @app.delete("/api/datasets/{dataset_id}/rows/{row_id}", response_model=SuccessResponse)
 def delete_row(dataset_id: str, row_id: str):
-    """Delete a row."""
-    dataset = get_dataset(dataset_id)
-    try:
-        manipulation_engine.delete_row(dataset_id, row_id)
-        return SuccessResponse(message=f"Row {row_id} marked for deletion")
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    """Delete a row (pending until committed)."""
+    get_dataset(dataset_id)
+    _edit(manipulation_engine.delete_row, dataset_id, row_id)
+    return SuccessResponse(message=f"Row {row_id} deleted")
+
+
+@app.post("/api/datasets/{dataset_id}/replace/preview", response_model=SuccessResponse)
+def preview_replace(dataset_id: str, request: ReplaceRequest):
+    """Count rows a find & replace would change."""
+    get_dataset(dataset_id)
+    count = _edit(manipulation_engine.count_matches, dataset_id, request)
+    return SuccessResponse(message=f"{count} matching rows", data={"count": count})
 
 
 @app.post("/api/datasets/{dataset_id}/replace", response_model=SuccessResponse)
 def replace_values(dataset_id: str, request: ReplaceRequest):
-    """Replace values in a column."""
-    dataset = get_dataset(dataset_id)
-    try:
-        manipulation_engine.replace_values(dataset_id, request)
-        return SuccessResponse(message="Replace operation queued")
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    """Find & replace in a column (pending until committed)."""
+    get_dataset(dataset_id)
+    count = _edit(manipulation_engine.replace_values, dataset_id, request)
+    return SuccessResponse(message=f"Replaced values in {count} rows", data={"count": count})
 
 
 @app.post("/api/datasets/{dataset_id}/transform", response_model=SuccessResponse)
 def transform_dataset(dataset_id: str, request: TransformRequest):
-    """Apply transformations."""
-    dataset = get_dataset(dataset_id)
-    try:
-        manipulation_engine.transform(dataset_id, request)
-        return SuccessResponse(message="Transform operations queued")
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    """Apply function-library steps to the dataset (pending until committed)."""
+    get_dataset(dataset_id)
+    steps = _edit(manipulation_engine.transform, dataset_id, request.operations, request.description)
+    return SuccessResponse(message=f"Applied {steps} step(s)", data={"steps": steps})
+
+
+@app.get("/api/datasets/{dataset_id}/changes", response_model=ChangesSummary)
+def get_changes(dataset_id: str):
+    """Pending (uncommitted) edits."""
+    get_dataset(dataset_id)
+    return manipulation_engine.summary(dataset_id)
+
+
+@app.post("/api/datasets/{dataset_id}/changes/undo", response_model=ChangesSummary)
+def undo_change(dataset_id: str):
+    """Drop the most recent pending edit."""
+    get_dataset(dataset_id)
+    manipulation_engine.undo(dataset_id)
+    return manipulation_engine.summary(dataset_id)
 
 
 @app.post("/api/datasets/{dataset_id}/commit", response_model=SuccessResponse)
 def commit_changes(dataset_id: str):
-    """Commit pending changes to disk."""
-    dataset = get_dataset(dataset_id)
-    try:
-        result = manipulation_engine.commit_changes(dataset_id)
-        return SuccessResponse(message="Changes committed", data=result)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    """Write pending edits to the dataset's file."""
+    get_dataset(dataset_id)
+    result = _edit(manipulation_engine.commit_changes, dataset_id)
+    view_store.drop_dataset(dataset_id)
+    search_engine.delete_index(dataset_id)
+    return SuccessResponse(message="Changes saved to file", data=result)
 
 
 @app.post("/api/datasets/{dataset_id}/discard", response_model=SuccessResponse)
-async def discard_changes(dataset_id: str):
-    """Discard pending changes."""
-    dataset = get_dataset(dataset_id)
+def discard_changes(dataset_id: str):
+    """Discard pending edits."""
+    get_dataset(dataset_id)
     manipulation_engine.discard_changes(dataset_id)
     return SuccessResponse(message="Changes discarded")
 

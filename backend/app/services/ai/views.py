@@ -62,6 +62,11 @@ class ViewStore:
     def base_frame(self, dataset_id: str, view_id: Optional[str] = None) -> pl.LazyFrame:
         if view_id:
             return self.get(view_id)[1]
+        from app.services.changes import IDX
+        from app.services.manipulation import manipulation_engine
+
+        if manipulation_engine.has_changes(dataset_id):
+            return manipulation_engine.frame(dataset_id).drop(IDX)
         lf = dataset_manager.get_dataframe(dataset_id)
         if lf is None:
             raise ValueError(f"Dataset {dataset_id} not found")
@@ -93,6 +98,14 @@ class ViewStore:
         if not entry:
             raise ValueError("This AI result has expired. Run the prompt again.")
         return entry
+
+    def lineage(self, view_id: str) -> Tuple[ViewInfo, List[PlanStep]]:
+        """The view and every step from the dataset to it, including steps of the views it refined."""
+        info, _ = self.get(view_id)
+        chain = [info]
+        while chain[-1].parent_view_id:
+            chain.append(self.get(chain[-1].parent_view_id)[0])
+        return info, [step for view in reversed(chain) for step in view.steps]
 
     def delete(self, view_id: str) -> bool:
         with self._lock:

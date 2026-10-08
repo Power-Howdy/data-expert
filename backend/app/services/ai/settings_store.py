@@ -10,17 +10,13 @@ from app.models.ai_schemas import (
     AIProvider, AIProviderPublic, AIProviderUpdate, AISettings, AISettingsPublic, AISettingsUpdate,
 )
 from app.services.ai.prompts import DEFAULT_PROMPTS
+from app.services.ai.providers import DEFAULT_PRESET_IDS, PRESETS, PRESETS_BY_ID, is_local, preset_for
 
 logger = logging.getLogger(__name__)
 
-LOCAL_KINDS = {"ollama", "lmstudio"}
-ENV_KEYS = {"openai": "OPENAI_API_KEY", "openrouter": "OPENROUTER_API_KEY"}
-
 DEFAULT_PROVIDERS = [
-    AIProvider(id="ollama", name="Ollama (local)", kind="ollama", base_url="http://localhost:11434/v1", model="llama3.1"),
-    AIProvider(id="lmstudio", name="LM Studio (local)", kind="lmstudio", base_url="http://localhost:1234/v1"),
-    AIProvider(id="openai", name="OpenAI", kind="openai", base_url="https://api.openai.com/v1", model="gpt-4o-mini"),
-    AIProvider(id="openrouter", name="OpenRouter", kind="openrouter", base_url="https://openrouter.ai/api/v1"),
+    AIProvider(id=p.id, name=p.name, kind=p.id, base_url=p.base_url, model=p.model)
+    for p in (PRESETS_BY_ID[i] for i in DEFAULT_PRESET_IDS)
 ]
 
 
@@ -29,6 +25,7 @@ def default_settings() -> AISettings:
         active_provider_id="ollama",
         providers=[p.model_copy() for p in DEFAULT_PROVIDERS],
         prompts=DEFAULT_PROMPTS.model_copy(),
+        defaults_seen=list(DEFAULT_PRESET_IDS),
     )
 
 
@@ -36,14 +33,14 @@ def resolve_api_key(provider: AIProvider) -> str:
     """Stored key, falling back to the provider's conventional environment variable."""
     if provider.api_key:
         return provider.api_key
-    env = ENV_KEYS.get(provider.kind)
-    return os.environ.get(env, "") if env else ""
+    preset = preset_for(provider.kind)
+    return os.environ.get(preset.env_key, "") if preset and preset.env_key else ""
 
 
 def is_configured(provider: Optional[AIProvider]) -> bool:
     if not provider or not provider.base_url or not provider.model:
         return False
-    return provider.kind in LOCAL_KINDS or provider.kind == "custom" or bool(resolve_api_key(provider))
+    return is_local(provider.kind) or provider.kind == "custom" or bool(resolve_api_key(provider))
 
 
 class AISettingsStore:
@@ -64,6 +61,11 @@ class AISettingsStore:
                 if not prompts.get(key) or (key == "planner" and "ai_column" in prompts[key]):
                     prompts[key] = default
             data["prompts"] = prompts
+            skip = {p.get("id") for p in data.get("providers", [])} | set(data.get("defaults_seen", []))
+            data["providers"] = data.get("providers", []) + [
+                p.model_dump() for p in DEFAULT_PROVIDERS if p.id not in skip
+            ]
+            data["defaults_seen"] = DEFAULT_PRESET_IDS
             return AISettings(**data)
         except (OSError, ValueError) as e:
             logger.warning(f"Could not read AI settings, using defaults: {e}")
@@ -94,6 +96,7 @@ class AISettingsStore:
             self._settings = AISettings(
                 active_provider_id=update.active_provider_id,
                 providers=providers,
+                defaults_seen=self._settings.defaults_seen,
                 model=update.model,
                 prompts=update.prompts.model_copy(update={
                     k: v for k, v in DEFAULT_PROMPTS.model_dump().items() if not getattr(update.prompts, k)
@@ -125,6 +128,7 @@ class AISettingsStore:
             prompts=current.prompts,
             default_prompts=DEFAULT_PROMPTS,
             configured=is_configured(self.active_provider()),
+            presets=[p.model_dump() for p in PRESETS],
         )
 
 

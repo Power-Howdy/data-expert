@@ -1,13 +1,16 @@
-import { Info, Sparkles, Undo2 } from "lucide-react"
+import { CheckCheck, Info, Sparkles, Undo2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { LoadingButton } from "@/components/common/LoadingButton"
 import type { DataView } from "@/types/ai"
 
 interface ViewBannerProps {
   view: DataView
   onDiscard: () => void
+  onApply?: () => void
+  applying?: boolean
 }
 
-export function ViewBanner({ view, onDiscard }: ViewBannerProps) {
+export function ViewBanner({ view, onDiscard, onApply, applying = false }: ViewBannerProps) {
   return (
     <div className="space-y-2 rounded-2xl border-2 border-accent/50 bg-accent/10 px-4 py-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -16,9 +19,16 @@ export function ViewBanner({ view, onDiscard }: ViewBannerProps) {
           <span className="shrink-0">AI result · {view.total.toLocaleString()} rows</span>
           {view.prompt && <span className="truncate font-semibold text-muted-foreground">“{view.prompt}”</span>}
         </div>
-        <Button variant="ghost" size="sm" onClick={onDiscard}>
-          <Undo2 className="h-4 w-4" /> Back to original
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={onDiscard} disabled={applying}>
+            <Undo2 className="h-4 w-4" /> Back to original
+          </Button>
+          {onApply && (
+            <LoadingButton size="sm" onClick={onApply} loading={applying} loadingText="Applying...">
+              <CheckCheck className="h-4 w-4" /> Apply to dataset
+            </LoadingButton>
+          )}
+        </div>
       </div>
       {view.notes.map((note) => (
         <p key={note} className="flex items-start gap-2 text-xs font-semibold text-muted-foreground">
@@ -26,7 +36,8 @@ export function ViewBanner({ view, onDiscard }: ViewBannerProps) {
         </p>
       ))}
       <p className="text-xs font-semibold text-muted-foreground">
-        Not saved yet. Use “Save as dataset” to keep it, or send another prompt to refine it.
+        Not saved yet. “Save as dataset” writes it to a new file; “Apply to dataset” makes it a pending change of this
+        file. Or send another prompt to refine it.
       </p>
     </div>
   )

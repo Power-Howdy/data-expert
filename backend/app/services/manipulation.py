@@ -1,333 +1,244 @@
-import polars as pl
-from datetime import datetime
-from pathlib import Path
-from typing import Optional, List, Dict, Any, Union
-import uuid
+"""Row browsing and editing. Edits are pending (kept in memory, applied lazily) until committed to the file."""
 import logging
+import os
+import threading
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
+import polars as pl
+
+from app.models.ai_schemas import PlanStep, TransformPlan
 from app.models.schemas import (
-    Dataset, DataFormat, ColumnSchema, RowData, RowsResponse,
-    AddRowRequest, UpdateRowRequest, ReplaceRequest, TransformRequest,
-    FilterParams, SortParams, DataType
+    ChangeItem, ChangesSummary, DataFormat, FilterParams, LoadDatasetRequest, ReplaceRequest, RowData,
+    RowsResponse, SortParams,
 )
-from app.services.data_loader import dataset_manager, data_loader
-from app.core.config import settings
+from app.services.changes import ADDED_BASE, IDX, apply_changes, coerce, replace_match, with_index
+from app.services.data_loader import data_loader, dataset_manager
+from app.services.functions.expressions import filter_expr
 
 logger = logging.getLogger(__name__)
+SINKS = {DataFormat.PARQUET: "sink_parquet", DataFormat.JSONL: "sink_ndjson", DataFormat.CSV: "sink_csv"}
+LABEL_CHARS = 60
+
+
+def _short(value: Any) -> str:
+    text = str(value)
+    return text[:LABEL_CHARS] + "…" if len(text) > LABEL_CHARS else text
+
+
+def _row_name(row_id: int) -> str:
+    return "an added row" if row_id >= ADDED_BASE else f"row {row_id + 1:,}"
 
 
 class DataManipulationEngine:
-    """Handle data manipulation operations: CRUD, replace, transform."""
-    
     def __init__(self):
-        self._pending_changes: Dict[str, List[Dict]] = {}
-    
+        self._ops: Dict[str, List[Dict[str, Any]]] = {}
+        self._added: Dict[str, int] = {}
+        self._lock = threading.RLock()
+
+    # ---------- reading ----------
+
+    def _source(self, dataset_id: str) -> pl.LazyFrame:
+        lf = dataset_manager.get_dataframe(dataset_id)
+        if lf is None:
+            raise ValueError(f"Dataset {dataset_id} not found")
+        return lf
+
+    def frame(self, dataset_id: str) -> pl.LazyFrame:
+        """Current data including pending edits, with the IDX row-id column."""
+        with self._lock:
+            ops = list(self._ops.get(dataset_id, []))
+        return apply_changes(self._source(dataset_id), ops) if ops else with_index(self._source(dataset_id))
+
+    def has_changes(self, dataset_id: str) -> bool:
+        return bool(self._ops.get(dataset_id))
+
     def get_rows(
-        self, 
-        dataset_id: str, 
-        offset: int = 0, 
-        limit: int = 100,
-        filters: Optional[List[FilterParams]] = None,
-        sorts: Optional[List[SortParams]] = None
+        self, dataset_id: str, offset: int = 0, limit: int = 100,
+        filters: Optional[List[FilterParams]] = None, sorts: Optional[List[SortParams]] = None,
     ) -> RowsResponse:
-        """Get paginated rows with optional filtering and sorting."""
-        lf = dataset_manager.get_dataframe(dataset_id)
-        if lf is None:
-            raise ValueError(f"Dataset {dataset_id} not found")
-        
-        dataset = dataset_manager.get_dataset(dataset_id)
-        if not dataset:
-            raise ValueError(f"Dataset {dataset_id} not found")
-        
-        # Apply pending changes if any
-        lf = self._apply_pending_changes(dataset_id, lf)
-        
-        # Apply filters
-        if filters:
-            for f in filters:
-                lf = self._apply_filter(lf, f.column, f.operator, f.value)
-        
-        # Apply sorts
+        if not filters and not sorts and not self.has_changes(dataset_id):
+            lf = self._source(dataset_id)
+            df = lf.slice(offset, limit).collect()
+            rows = [RowData(id=str(offset + i), data=r) for i, r in enumerate(df.iter_rows(named=True))]
+            dataset = dataset_manager.get_dataset(dataset_id)
+            total = dataset.row_count if dataset else lf.select(pl.len()).collect().item()
+            return RowsResponse(rows=rows, total=total, offset=offset, limit=limit)
+
+        lf = self.frame(dataset_id)
+        schema = lf.collect_schema()
+        for f in filters or []:
+            lf = lf.filter(filter_expr(schema, f.column, f.operator, f.value))
         if sorts:
-            sort_exprs = []
-            for s in sorts:
-                sort_exprs.append(pl.col(s.column).sort(descending=not s.ascending))
-            lf = lf.sort(sort_exprs)
-        
+            lf = lf.sort([s.column for s in sorts], descending=[not s.ascending for s in sorts], nulls_last=True)
         total = lf.select(pl.len()).collect().item()
-        rows_df = lf.slice(offset, limit).collect()
-        
-        rows = []
-        for i, row in enumerate(rows_df.iter_rows(named=True)):
-            row_id = row.get("row_id", str(uuid.uuid4()))
-            rows.append(RowData(id=row_id, data=row))
-        
-        return RowsResponse(
-            rows=rows,
-            total=total,
-            offset=offset,
-            limit=limit
-        )
-    
-    def _apply_filter(self, lf: pl.LazyFrame, column: str, operator: str, value: Any) -> pl.LazyFrame:
-        col_expr = pl.col(column)
-        
-        ops = {
-            "eq": col_expr == value,
-            "ne": col_expr != value,
-            "gt": col_expr > value,
-            "gte": col_expr >= value,
-            "lt": col_expr < value,
-            "lte": col_expr <= value,
-            "contains": col_expr.str.contains(str(value)),
-            "startswith": col_expr.str.starts_with(str(value)),
-            "endswith": col_expr.str.ends_with(str(value)),
-            "in": col_expr.is_in(value) if isinstance(value, list) else col_expr == value,
-            "not_in": ~col_expr.is_in(value) if isinstance(value, list) else col_expr != value,
-            "is_null": col_expr.is_null(),
-            "is_not_null": col_expr.is_not_null(),
-        }
-        
-        if operator in ops:
-            return lf.filter(ops[operator])
-        
-        raise ValueError(f"Unknown operator: {operator}")
-    
-    def add_row(self, dataset_id: str, request: AddRowRequest) -> RowData:
-        """Add a new row to the dataset."""
-        lf = dataset_manager.get_dataframe(dataset_id)
-        if lf is None:
-            raise ValueError(f"Dataset {dataset_id} not found")
-        
-        dataset = dataset_manager.get_dataset(dataset_id)
-        if not dataset:
-            raise ValueError(f"Dataset {dataset_id} not found")
-        
-        # Validate row data against schema
-        validated_data = self._validate_row_data(request.data, dataset.columns_schema)
-        validated_data["row_id"] = str(uuid.uuid4())
-        
-        # Add to pending changes
-        if dataset_id not in self._pending_changes:
-            self._pending_changes[dataset_id] = []
-        self._pending_changes[dataset_id].append({
-            "type": "add",
-            "data": validated_data
-        })
-        
-        return RowData(id=validated_data["row_id"], data=validated_data)
-    
-    def update_row(self, dataset_id: str, row_id: str, request: UpdateRowRequest) -> RowData:
-        """Update an existing row."""
-        lf = dataset_manager.get_dataframe(dataset_id)
-        if lf is None:
-            raise ValueError(f"Dataset {dataset_id} not found")
-        
-        dataset = dataset_manager.get_dataset(dataset_id)
-        if not dataset:
-            raise ValueError(f"Dataset {dataset_id} not found")
-        
-        # Validate row data
-        validated_data = self._validate_row_data(request.data, dataset.columns_schema)
-        validated_data["row_id"] = row_id
-        
-        # Add to pending changes
-        if dataset_id not in self._pending_changes:
-            self._pending_changes[dataset_id] = []
-        self._pending_changes[dataset_id].append({
-            "type": "update",
-            "row_id": row_id,
-            "data": validated_data
-        })
-        
-        return RowData(id=row_id, data=validated_data)
-    
-    def delete_row(self, dataset_id: str, row_id: str) -> bool:
-        """Delete a row."""
-        if dataset_id not in self._pending_changes:
-            self._pending_changes[dataset_id] = []
-        self._pending_changes[dataset_id].append({
-            "type": "delete",
-            "row_id": row_id
-        })
-        return True
-    
-    def replace_values(self, dataset_id: str, request: ReplaceRequest) -> int:
-        """Replace values in a column."""
-        if dataset_id not in self._pending_changes:
-            self._pending_changes[dataset_id] = []
-        self._pending_changes[dataset_id].append({
-            "type": "replace",
-            "column": request.column,
-            "old_value": request.old_value,
-            "new_value": request.new_value,
-            "case_sensitive": request.case_sensitive
-        })
-        return 1  # Return count of affected rows (would be computed on commit)
-    
-    def transform(self, dataset_id: str, request: TransformRequest) -> Dict[str, Any]:
-        """Apply transformation operations."""
-        if dataset_id not in self._pending_changes:
-            self._pending_changes[dataset_id] = []
-        self._pending_changes[dataset_id].append({
-            "type": "transform",
-            "operations": request.operations
-        })
-        return {"success": True, "operations": len(request.operations)}
-    
-    def _validate_row_data(self, data: Dict[str, Any], schema: List[ColumnSchema]) -> Dict[str, Any]:
-        """Validate and coerce row data to match schema."""
-        validated = {}
-        for col in schema:
-            value = data.get(col.name)
-            if value is None:
-                if not col.nullable:
-                    raise ValueError(f"Column {col.name} is not nullable")
-                validated[col.name] = None
-            else:
-                validated[col.name] = self._coerce_value(value, col.type)
-        return validated
-    
-    def _coerce_value(self, value: Any, target_type: DataType) -> Any:
-        """Coerce value to target type."""
+        df = lf.slice(offset, limit).collect()
+        return RowsResponse(rows=[self._row(r) for r in df.iter_rows(named=True)], total=total, offset=offset, limit=limit)
+
+    @staticmethod
+    def _row(row: Dict[str, Any]) -> RowData:
+        row_id = row.pop(IDX)
+        return RowData(id=str(row_id), data=row)
+
+    def get_row(self, dataset_id: str, row_id: str) -> RowData:
+        position = self._parse_id(row_id)
+        with self._lock:
+            ops = list(self._ops.get(dataset_id, []))
+        if position < ADDED_BASE and not any(o["type"] == "transform" for o in ops):
+            lf = apply_changes(self._source(dataset_id).slice(position, 1), ops, offset=position)
+        else:
+            lf = self.frame(dataset_id)
+        df = lf.filter(pl.col(IDX) == position).head(1).collect()
+        if df.is_empty():
+            raise KeyError(f"Row {row_id} not found")
+        return self._row(df.row(0, named=True))
+
+    @staticmethod
+    def _parse_id(row_id: str) -> int:
         try:
-            if target_type == DataType.INTEGER:
-                return int(value)
-            elif target_type == DataType.FLOAT:
-                return float(value)
-            elif target_type == DataType.BOOLEAN:
-                if isinstance(value, str):
-                    return value.lower() in ("true", "1", "yes", "y")
-                return bool(value)
-            elif target_type == DataType.STRING:
-                return str(value)
-            elif target_type in (DataType.DATETIME, DataType.DATE, DataType.TIME):
-                return str(value)  # Keep as string for now
-            return value
-        except Exception:
-            raise ValueError(f"Cannot coerce {value} to {target_type}")
-    
-    def _apply_pending_changes(self, dataset_id: str, lf: pl.LazyFrame) -> pl.LazyFrame:
-        """Apply pending changes to LazyFrame."""
-        changes = self._pending_changes.get(dataset_id, [])
-        if not changes:
-            return lf
-        
-        # Collect to apply changes
-        df = lf.collect()
-        
-        for change in changes:
-            if change["type"] == "add":
-                new_row = pl.DataFrame([change["data"]])
-                df = pl.concat([df, new_row], how="vertical_relaxed")
-            
-            elif change["type"] == "update":
-                row_id = change["row_id"]
-                data = change["data"]
-                # Update row where row_id matches
-                mask = df["row_id"] == row_id
-                for col, val in data.items():
-                    if col != "row_id":
-                        df = df.with_columns(
-                            pl.when(mask).then(pl.lit(val)).otherwise(pl.col(col)).alias(col)
-                        )
-            
-            elif change["type"] == "delete":
-                row_id = change["row_id"]
-                df = df.filter(pl.col("row_id") != row_id)
-            
-            elif change["type"] == "replace":
-                col = change["column"]
-                old_val = change["old_value"]
-                new_val = change["new_value"]
-                case_sensitive = change.get("case_sensitive", True)
-                if case_sensitive:
-                    df = df.with_columns(
-                        pl.when(pl.col(col) == old_val).then(new_val).otherwise(pl.col(col)).alias(col)
-                    )
-                else:
-                    df = df.with_columns(
-                        pl.when(pl.col(col).str.to_lowercase() == str(old_val).lower())
-                        .then(new_val).otherwise(pl.col(col)).alias(col)
-                    )
-            
-            elif change["type"] == "transform":
-                for op in change["operations"]:
-                    df = self._apply_transform_op(df, op)
-        
-        return df.lazy()
-    
-    def _apply_transform_op(self, df: pl.DataFrame, op: Dict[str, Any]) -> pl.DataFrame:
-        """Apply a single transformation operation."""
-        op_type = op.get("type")
-        
-        if op_type == "rename":
-            return df.rename({op["old_name"]: op["new_name"]})
-        
-        elif op_type == "drop":
-            return df.drop(op["columns"])
-        
-        elif op_type == "cast":
-            return df.with_columns(
-                pl.col(op["column"]).cast(getattr(pl, op["target_type"]))
-            )
-        
-        elif op_type == "fill_null":
-            return df.with_columns(
-                pl.col(op["column"]).fill_null(op["value"])
-            )
-        
-        elif op_type == "derive":
-            expr_str = op["expression"]
-            return df.with_columns(
-                pl.col(op["expression"]).alias(op["new_column"])
-            )
-        
-        return df
-    
+            return int(row_id)
+        except ValueError:
+            raise ValueError(f"Invalid row id '{row_id}'")
+
+    # ---------- editing ----------
+
+    def _record(self, dataset_id: str, op: Dict[str, Any]) -> None:
+        with self._lock:
+            self._ops.setdefault(dataset_id, []).append(op)
+
+    def _coerce_values(self, dataset_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        schema = self.frame(dataset_id).collect_schema()
+        unknown = [k for k in data if k not in schema or k == IDX]
+        if unknown:
+            raise ValueError(f"Unknown column(s): {', '.join(unknown)}")
+        return {k: coerce(v, schema[k], k) for k, v in data.items()}
+
+    def add_row(self, dataset_id: str, data: Dict[str, Any]) -> RowData:
+        values = self._coerce_values(dataset_id, data)
+        with self._lock:
+            row_id = ADDED_BASE + self._added.get(dataset_id, 0)
+            self._added[dataset_id] = self._added.get(dataset_id, 0) + 1
+        self._record(dataset_id, {"type": "add", "id": row_id, "values": values})
+        return self.get_row(dataset_id, str(row_id))
+
+    def update_row(self, dataset_id: str, row_id: str, data: Dict[str, Any]) -> RowData:
+        current = self.get_row(dataset_id, row_id).data
+        values = self._coerce_values(dataset_id, data)
+        changed = {k: v for k, v in values.items() if current.get(k) != v}
+        if changed:
+            self._record(dataset_id, {"type": "update", "id": self._parse_id(row_id), "values": changed})
+        return self.get_row(dataset_id, row_id)
+
+    def delete_row(self, dataset_id: str, row_id: str) -> None:
+        self.get_row(dataset_id, row_id)
+        self._record(dataset_id, {"type": "delete", "id": self._parse_id(row_id)})
+
+    def _replace_op(self, request: ReplaceRequest) -> Dict[str, Any]:
+        if request.old_value in (None, "") and request.mode != "exact":
+            raise ValueError("Enter text to find")
+        return {
+            "type": "replace", "column": request.column, "find": request.old_value, "replace": request.new_value,
+            "mode": request.mode, "case_sensitive": request.case_sensitive,
+        }
+
+    def count_matches(self, dataset_id: str, request: ReplaceRequest) -> int:
+        lf = self.frame(dataset_id)
+        schema = lf.collect_schema()
+        if request.column not in schema or request.column == IDX:
+            raise ValueError(f"Unknown column '{request.column}'")
+        return lf.filter(replace_match(schema, self._replace_op(request))).select(pl.len()).collect().item()
+
+    def replace_values(self, dataset_id: str, request: ReplaceRequest) -> int:
+        count = self.count_matches(dataset_id, request)
+        if count:
+            self._record(dataset_id, self._replace_op(request))
+        return count
+
+    def transform(self, dataset_id: str, operations: List[Dict[str, Any]], description: str = "") -> int:
+        from app.services.ai.planner import TEST_ROWS, check_plan
+
+        steps = [PlanStep(op=str(o.get("op") or o.get("function")), params=o.get("params") or {}) for o in operations]
+        if not steps:
+            raise ValueError("No operations given")
+        check_plan(TransformPlan(steps=steps), self.frame(dataset_id).drop(IDX).head(TEST_ROWS).collect())
+        self._record(dataset_id, {
+            "type": "transform", "description": description,
+            "steps": [s.model_dump(include={"op", "params"}) for s in steps],
+        })
+        return len(steps)
+
+    # ---------- pending changes ----------
+
+    def summary(self, dataset_id: str) -> ChangesSummary:
+        with self._lock:
+            ops = list(self._ops.get(dataset_id, []))
+        counts = {t: sum(1 for o in ops if o["type"] == t) for t in ("add", "update", "delete", "replace", "transform")}
+        return ChangesSummary(
+            total=len(ops), added=counts["add"], updated=counts["update"], deleted=counts["delete"],
+            replaced=counts["replace"], transformed=counts["transform"], items=[self._describe(o) for o in ops],
+        )
+
+    @staticmethod
+    def _describe(op: Dict[str, Any]) -> ChangeItem:
+        kind = op["type"]
+        if kind == "add":
+            label = "Added a row"
+        elif kind == "update":
+            label = f"Edited {', '.join(op['values'])} in {_row_name(op['id'])}"
+        elif kind == "delete":
+            label = f"Deleted {_row_name(op['id'])}"
+        elif kind == "replace":
+            label = f"Replaced “{_short(op['find'])}” with “{_short(op['replace'])}” in {op['column']} ({op['mode']})"
+        else:
+            label = op.get("description") or "Transform: " + " → ".join(s["op"] for s in op["steps"])
+        return ChangeItem(type=kind, label=label)
+
+    def undo(self, dataset_id: str) -> bool:
+        with self._lock:
+            ops = self._ops.get(dataset_id)
+            if not ops:
+                return False
+            ops.pop()
+            return True
+
+    def discard_changes(self, dataset_id: str) -> None:
+        with self._lock:
+            self._ops.pop(dataset_id, None)
+            self._added.pop(dataset_id, None)
+
     def commit_changes(self, dataset_id: str) -> Dict[str, Any]:
-        """Commit pending changes to disk."""
-        lf = dataset_manager.get_dataframe(dataset_id)
-        if lf is None:
-            raise ValueError(f"Dataset {dataset_id} not found")
-        
+        """Write the edited data back to the dataset's file, then reload it under the same id."""
         dataset = dataset_manager.get_dataset(dataset_id)
         if not dataset:
             raise ValueError(f"Dataset {dataset_id} not found")
-        
-        # Apply changes
-        df = self._apply_pending_changes(dataset_id, lf)
-        
-        # Write back to file
-        data_loader.write(df, dataset.path, dataset.format)
-        
-        # Reload dataset
-        new_lf = data_loader.load_lazy(dataset.path, dataset.format)
-        schema = data_loader.get_schema(new_lf)
-        stats = data_loader.get_stats(new_lf, schema)
-        
-        dataset.columns_schema = schema
-        dataset.stats = stats
-        dataset.row_count = stats.row_count
-        file_stat = Path(dataset.path).stat()
-        dataset.size_bytes = file_stat.st_size
-        dataset.last_modified = datetime.fromtimestamp(file_stat.st_mtime)
-        
-        dataset_manager.register(dataset, new_lf, dataset_manager.options.get(dataset_id))
-        
-        # Clear pending changes
-        self._pending_changes[dataset_id] = []
-        
-        return {"success": True, "rows_affected": df.height}
-    
-    def discard_changes(self, dataset_id: str) -> None:
-        """Discard pending changes."""
-        if dataset_id in self._pending_changes:
-            self._pending_changes[dataset_id] = []
-    
-    def get_pending_changes(self, dataset_id: str) -> List[Dict]:
-        """Get pending changes for a dataset."""
-        return self._pending_changes.get(dataset_id, [])
+        if not self.has_changes(dataset_id):
+            return {"rows": dataset.row_count}
+        lf = self.frame(dataset_id).drop(IDX)
+        path = Path(dataset.path)
+        tmp = path.with_name(f".{path.stem}.dx-tmp{path.suffix}")
+        try:
+            self._write(lf, tmp, dataset.format)
+            os.replace(tmp, path)
+        finally:
+            tmp.unlink(missing_ok=True)
+        self.discard_changes(dataset_id)
+        reloaded = dataset_manager.load_dataset(LoadDatasetRequest(
+            path=str(path), name=dataset.name, format=dataset.format, options=dataset_manager.options.get(dataset_id) or {},
+        ))
+        return {"rows": reloaded.row_count}
+
+    @staticmethod
+    def _write(lf: pl.LazyFrame, path: Path, fmt: DataFormat) -> None:
+        if fmt == DataFormat.CSV and any(isinstance(t, (pl.List, pl.Struct, pl.Array)) for t in lf.collect_schema().values()):
+            raise ValueError("CSV cannot store list or nested columns")
+        sink = SINKS.get(fmt)
+        if sink:
+            try:
+                return getattr(lf, sink)(path)
+            except Exception as e:
+                logger.info(f"Streaming write failed, falling back to in-memory write: {e}")
+                path.unlink(missing_ok=True)
+        data_loader.write(lf.collect(), str(path), fmt)
 
 
 manipulation_engine = DataManipulationEngine()

@@ -2,6 +2,7 @@ import * as React from "react"
 import toast from "react-hot-toast"
 import { api } from "@/lib/api"
 import { aiApi } from "@/lib/aiApi"
+import { useEditStore } from "@/stores/useEditStore"
 import { Dataset, RowData, SortParams } from "@/types"
 import type { DataView } from "@/types/ai"
 import { ColumnFilter } from "./filterOperators"
@@ -20,6 +21,8 @@ export function useBrowseData(dataset: Dataset | undefined, view: DataView | nul
   const requestId = React.useRef(0)
   const datasetId = dataset?.id
   const viewId = view?.id
+  const version = useEditStore((s) => s.version)
+  const refreshChanges = useEditStore((s) => s.refresh)
 
   const clearFilters = () => setFilters((current) => (current.length ? [] : current))
 
@@ -37,6 +40,7 @@ export function useBrowseData(dataset: Dataset | undefined, view: DataView | nul
     clearFilters()
     setSearchQuery("")
     setSearchResults([])
+    if (datasetId) refreshChanges(datasetId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasetId])
 
@@ -55,7 +59,7 @@ export function useBrowseData(dataset: Dataset | undefined, view: DataView | nul
       })
       .catch(() => id === requestId.current && toast.error("Failed to load rows"))
       .finally(() => id === requestId.current && setLoading(false))
-  }, [datasetId, viewId, page, pageSize, filters, sorts])
+  }, [datasetId, viewId, page, pageSize, filters, sorts, version])
 
   const search = async () => {
     if (!dataset || !searchQuery.trim()) return

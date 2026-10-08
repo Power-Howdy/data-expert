@@ -6,9 +6,9 @@ from typing import Any, Dict, List, Optional
 import httpx
 
 from app.models.ai_schemas import AIModelSettings, AIProvider
+from app.services.ai.providers import is_local, preset_for
 from app.services.ai.settings_store import ai_settings_store, is_configured, resolve_api_key
 
-HOSTED_KINDS = {"openai", "openrouter"}
 THINK_BLOCK = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
 
 
@@ -19,8 +19,16 @@ class AIError(Exception):
 def _headers(provider: AIProvider) -> Dict[str, str]:
     headers = {"Content-Type": "application/json"}
     key = resolve_api_key(provider)
+    preset = preset_for(provider.kind)
+    auth = preset.auth if preset else "bearer"
     if key:
         headers["Authorization"] = f"Bearer {key}"
+        if auth == "anthropic":
+            headers["x-api-key"] = key
+        elif auth == "azure":
+            headers["api-key"] = key
+    if auth == "anthropic":
+        headers["anthropic-version"] = "2023-06-01"
     if provider.kind == "openrouter":
         headers["X-Title"] = "Data Expert"
     return headers
@@ -99,7 +107,7 @@ class LLMClient:
         }
         if json_output and self.settings.json_mode:
             payload["response_format"] = {"type": "json_object"}
-        if self.settings.disable_thinking and self.provider.kind not in HOSTED_KINDS:
+        if self.settings.disable_thinking and (is_local(self.provider.kind) or self.provider.kind == "custom"):
             payload["chat_template_kwargs"] = {"enable_thinking": False}
         try:
             response = httpx.post(

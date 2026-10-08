@@ -14,7 +14,8 @@ import { BrowseTable } from "./BrowseTable"
 import { BrowseActions } from "./BrowseActions"
 import { AIAssistant } from "./AIAssistant"
 import { ViewBanner } from "./ViewBanner"
-import { SaveDatasetDialog } from "./SaveDatasetDialog"
+import { PendingChangesBar } from "./PendingChangesBar"
+import { BrowseDialogs, type BrowseDialog } from "./BrowseDialogs"
 
 export function BrowseTab() {
   const dataset = useSelectedDataset()
@@ -24,8 +25,9 @@ export function BrowseTab() {
   const data = useBrowseData(dataset, ai.view)
   const [showFilters, setShowFilters] = React.useState(false)
   const [showAI, setShowAI] = React.useState(false)
-  const [saving, setSaving] = React.useState(false)
+  const [dialog, setDialog] = React.useState<BrowseDialog>(null)
   const showingSearch = !ai.view && data.searchResults.length > 0
+  const editable = !ai.view && !showingSearch
 
   if (!dataset || !schema) {
     return (
@@ -42,28 +44,25 @@ export function BrowseTab() {
         subtitle={`${formatNumber(dataset.row_count)} rows · ${dataset.schema.length} columns · ${dataset.format}`}
         actions={
           <BrowseActions
-            onSearch={ai.view ? undefined : data.search}
-            searchLoading={data.searchLoading}
-            filterCount={data.filters.length}
-            onToggleFilters={() => setShowFilters(!showFilters)}
-            aiOpen={showAI}
-            onToggleAI={() => setShowAI(!showAI)}
-            onSave={() => setSaving(true)}
+            onSearch={ai.view ? undefined : data.search} searchLoading={data.searchLoading}
+            filterCount={data.filters.length} onToggleFilters={() => setShowFilters(!showFilters)}
+            aiOpen={showAI} onToggleAI={() => setShowAI(!showAI)}
+            onSave={() => setDialog("save")}
+            onAddRow={ai.view ? undefined : () => setDialog("add")}
+            onReplace={ai.view ? undefined : () => setDialog("replace")}
           />
         }
       />
       {!ai.view && (
         <Input
-          placeholder="Search across rows..."
-          value={data.searchQuery}
-          onChange={(e) => data.setSearchQuery(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && data.search()}
-          className="max-w-md"
+          placeholder="Search across rows..." value={data.searchQuery} className="max-w-md"
+          onChange={(e) => data.setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && data.search()}
         />
       )}
       <div className="shrink-0 space-y-5 empty:hidden">
+        <PendingChangesBar datasetId={dataset.id} />
         {showAI && <AIAssistant ai={ai} />}
-        {ai.view && <ViewBanner view={ai.view} onDiscard={ai.discardView} />}
+        {ai.view && <ViewBanner view={ai.view} onDiscard={ai.discardView} onApply={ai.applyView} applying={ai.applying} />}
         {showFilters && <FilterPanel filters={data.filters} columns={schema.map((c) => c.name)} onChange={data.setFilters} />}
       </div>
       <Separator />
@@ -74,11 +73,9 @@ export function BrowseTab() {
       )}
       <div className="min-h-[320px] flex-1">
         <BrowseTable
-          columns={columns}
-          rows={showingSearch ? data.searchResults : data.rows}
-          schema={schema}
-          loading={data.loading}
-          rowOffset={showingSearch ? 0 : data.page * data.pageSize}
+          columns={columns} rows={showingSearch ? data.searchResults : data.rows} schema={schema}
+          loading={data.loading} rowOffset={showingSearch ? 0 : data.page * data.pageSize}
+          datasetId={editable ? dataset.id : undefined}
         />
       </div>
       {!showingSearch && (
@@ -88,12 +85,10 @@ export function BrowseTab() {
           onPageChange={data.setPage} onPageSizeChange={data.changePageSize}
         />
       )}
-      {saving && (
-        <SaveDatasetDialog
-          dataset={dataset} view={ai.view} filters={data.filters} rowCount={data.total}
-          onClose={() => setSaving(false)} onSaved={() => setShowAI(false)}
-        />
-      )}
+      <BrowseDialogs
+        dialog={dialog} onClose={() => setDialog(null)} dataset={dataset} schema={schema} view={ai.view}
+        filters={data.filters} rowCount={data.total} onSavedAs={() => setShowAI(false)}
+      />
     </div>
   )
 }

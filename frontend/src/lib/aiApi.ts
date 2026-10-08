@@ -51,6 +51,10 @@ export const aiApi = {
   async deleteView(viewId: string): Promise<void> {
     await http.delete(`/views/${viewId}`, { silent: true } as object)
   },
+  /** Records the view's whole pipeline as a pending transform of its dataset. */
+  async applyView(viewId: string): Promise<void> {
+    await http.post(`/views/${viewId}/apply`, null, { timeout: 0 })
+  },
   async saveAs(
     datasetId: string,
     body: { name: string; format: SaveFormat; view_id?: string; filters?: unknown[]; overwrite?: boolean },
