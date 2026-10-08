@@ -51,9 +51,13 @@ export function useAnalytics(dataset: Dataset | undefined) {
   const selectColumn = (column: string) => {
     if (!dataset) return
     setActiveColumn(column)
+    setColumnDist(null)
+    setOutliers(null)
     api.getDistribution(dataset.id, column)
       .then(setColumnDist)
-      .catch(() => toast.error("Failed to load distribution"))
+      .catch((e) => setColumnDist({
+        type: "bar", values: [], note: `Could not load distribution: ${e?.response?.data?.detail ?? e.message}`,
+      }))
     api.getOutliers(dataset.id, column)
       .then(setOutliers)
       .catch(() => toast.error("Failed to load outliers"))

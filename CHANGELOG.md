@@ -16,6 +16,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed
 
 - `.gitignore` no longer excludes `package.json`, `package-lock.json` and `tsconfig*.json`.
+- Column details showed an empty distribution for list, array and struct columns. List items are now counted
+  (number lists get a histogram of their items), struct values are shown as JSON, and the counts are computed
+  lazily.
+
+### Changed
+
+- The Search button on the Browse tab shows and hides the search box, like the AI and Filters buttons.
 
 ## [1.0.0]
 

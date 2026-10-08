@@ -282,26 +282,60 @@ class AnalyticsEngine:
         if not col_schema:
             raise ValueError(f"Column {column} not found")
         
-        series = lf.select(pl.col(column)).collect()[column]
-        non_null = series.drop_nulls()
-        
         if col_schema.type in (DataType.INTEGER, DataType.FLOAT):
-            values = numeric_values(series)
+            values = numeric_values(lf.select(pl.col(column)).collect()[column])
             return {
                 "type": "histogram",
                 **histogram(values, bins),
                 "stats": numeric_summary(values) if values.len() > 0 else {},
             }
-        if col_schema.type not in (DataType.STRING, DataType.BOOLEAN, DataType.DATE, DataType.DATETIME):
-            return {"type": "bar", "values": [], "counts": [], "total_unique": 0}
-        value_counts = non_null.value_counts().sort("count", descending=True).head(50)
+
+        dtype = lf.collect_schema()[column]
+        values, note = lf.select(pl.col(column)), ""
+        if isinstance(dtype, (pl.List, pl.Array)):
+            values, note = values.select(pl.col(column).explode()), "Most common items across all lists"
+            dtype = dtype.inner
+        values = values.drop_nulls()
+        if dtype.is_numeric():
+            return self._item_histogram(values, column, bins)
+        if isinstance(dtype, (pl.Struct, pl.List, pl.Array)):
+            # Wrap in a one-field struct to JSON-encode any nesting, then strip the `{"v":` wrapper.
+            encoded = pl.struct(pl.col(column).alias("v")).struct.json_encode().str.slice(5).str.head(-1)
+            values, note = values.select(encoded.alias(column)), note or "Values shown as JSON"
+        elif dtype == pl.Binary or dtype == pl.Null:
+            return {"type": "bar", "values": [], "counts": [], "total_unique": 0, "note": "This column type cannot be charted"}
+
+        counts = values.group_by(column).len().sort("len", descending=True).head(50).collect()
+        total_unique = values.select(pl.col(column).n_unique()).collect().item()
         return {
             "type": "bar",
-            "values": [display_value(v) for v in value_counts[column].to_list()],
-            "counts": value_counts["count"].to_list(),
-            "total_unique": non_null.n_unique(),
+            "values": [display_value(v if isinstance(v, (str, int, float, bool)) else str(v)) for v in counts[column].to_list()],
+            "counts": counts["len"].to_list(),
+            "total_unique": total_unique,
+            "note": note,
         }
     
+    @staticmethod
+    def _item_histogram(values: pl.LazyFrame, column: str, bins: int) -> Dict[str, Any]:
+        """Histogram of every number inside a list column, computed by Polars without materializing the items."""
+        col = pl.col(column).cast(pl.Float64)
+        col = col.filter(col.is_not_nan())
+        row = values.select(
+            col.min().alias("min"), col.max().alias("max"), col.mean().alias("mean"),
+            col.std().alias("std"), col.median().alias("median"), col.len().alias("n"),
+        ).collect().row(0, named=True)
+        if not row["n"]:
+            return {"type": "histogram", "bins": [], "bin_edges": [], "stats": {}}
+        hist = values.select(col.hist(bin_count=bins, include_breakpoint=True)).collect().to_series().struct.unnest()
+        stats = {k: float(row[k] or 0.0) for k in ("min", "max", "mean", "std", "median")}
+        return {
+            "type": "histogram",
+            "bins": hist["count"].to_list(),
+            "bin_edges": [stats["min"]] + [float(b) for b in hist["breakpoint"].to_list()],
+            "stats": stats,
+            "note": "Distribution of all numbers across the lists",
+        }
+
     def detect_outliers(
         self, 
         dataset_id: str, 

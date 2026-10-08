@@ -52,7 +52,7 @@ export function AnalyticsTab() {
       {a.profile && (
         <ProfileTabs profile={a.profile} activeColumn={a.activeColumn} onColumnClick={a.selectColumn} />
       )}
-      {a.activeColumn && a.columnDist && (
+      {a.activeColumn && (
         <ColumnDetailPanel
           column={a.activeColumn}
           distribution={a.columnDist}
