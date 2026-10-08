@@ -223,6 +223,12 @@ def search_dataset(dataset_id: str, request: SearchRequest):
     return _edit(search_engine.search, dataset_id, request)
 
 
+@app.get("/api/search/indexing", response_model=Dict[str, SearchIndexStatus])
+def search_indexing():
+    """Search indexes being built (or that failed), by dataset id."""
+    return search_engine.active()
+
+
 @app.get("/api/datasets/{dataset_id}/search/status", response_model=SearchIndexStatus)
 def search_index_status(dataset_id: str):
     get_dataset(dataset_id)

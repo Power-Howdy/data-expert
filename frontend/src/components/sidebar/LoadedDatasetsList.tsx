@@ -1,51 +1,41 @@
-import { Database } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
-import { cn, formatNumber } from "@/lib/utils"
-import { Dataset } from "@/types"
+import { cn } from "@/lib/utils"
+import type { Dataset, SearchIndexStatus } from "@/types"
+import { LoadedDatasetItem } from "./LoadedDatasetItem"
 
 interface LoadedDatasetsListProps {
   datasets: Dataset[]
   selectedId: string | null
   onSelect: (id: string) => void
+  /** Search-index progress by dataset id. */
+  indexing?: Record<string, SearchIndexStatus>
+  /** Fill the remaining height instead of a short fixed list. */
+  grow?: boolean
 }
 
-export function LoadedDatasetsList({ datasets, selectedId, onSelect }: LoadedDatasetsListProps) {
+export function LoadedDatasetsList({ datasets, selectedId, onSelect, indexing = {}, grow }: LoadedDatasetsListProps) {
   return (
-    <div className="border-t-2 border-border bg-muted/30 p-3">
+    <div className={cn("flex flex-col bg-muted/30 p-3", grow ? "min-h-0 flex-1" : "border-t-2 border-border")}>
       <div className="mb-2 flex items-center justify-between px-1">
         <span className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">
           Loaded
         </span>
         <Badge variant="sky">{datasets.length}</Badge>
       </div>
-      <ScrollArea className="max-h-44">
+      <ScrollArea className={grow ? "min-h-0 flex-1" : "max-h-44"}>
         {datasets.length === 0 ? (
           <p className="px-1 py-3 text-center text-xs font-semibold text-muted-foreground">
             Click a file in the tree to load it
           </p>
         ) : (
-          <ul className="space-y-1.5">
+          <ul className="space-y-1.5 pb-1 pr-2">
             {datasets.map((dataset) => (
               <li key={dataset.id}>
-                <button
-                  type="button"
-                  className={cn(
-                    "w-full rounded-xl border-2 px-2.5 py-2 text-left transition-all",
-                    selectedId === dataset.id
-                      ? "border-primary bg-primary/10 shadow-duo-primary"
-                      : "border-transparent bg-card hover:border-border"
-                  )}
-                  onClick={() => onSelect(dataset.id)}
-                >
-                  <div className="flex items-center gap-2">
-                    <Database className="h-4 w-4 shrink-0 text-primary" />
-                    <span className="truncate text-sm font-extrabold">{dataset.name}</span>
-                  </div>
-                  <div className="mt-0.5 pl-6 text-[11px] font-bold text-muted-foreground">
-                    {formatNumber(dataset.row_count)} rows · {dataset.format}
-                  </div>
-                </button>
+                <LoadedDatasetItem
+                  dataset={dataset} selected={selectedId === dataset.id} indexing={indexing[dataset.id]}
+                  onSelect={() => onSelect(dataset.id)}
+                />
               </li>
             ))}
           </ul>

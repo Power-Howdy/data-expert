@@ -1,5 +1,6 @@
 import * as React from "react"
 import { api } from "@/lib/api"
+import { useIndexingStore } from "@/stores/useIndexingStore"
 import type { RowData, SearchIndexStatus, SearchResponse } from "@/types"
 
 const POLL_MS = 1500
@@ -35,6 +36,7 @@ export function useSearch(datasetId: string | undefined) {
       const response: SearchResponse = await api.search(datasetId, text, { limit: LIMIT })
       const building = response.index && response.index.state !== "ready"
       setIndexing(building ? response.index! : null)
+      if (building) useIndexingStore.getState().refresh()
       pending.current = building ? text : null
       setResults(response.results.map((r) => ({ id: r.row_id, data: r.data })))
       setTotal(response.total)

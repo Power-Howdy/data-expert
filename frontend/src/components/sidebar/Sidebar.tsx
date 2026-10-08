@@ -1,5 +1,7 @@
 import { PanelLeftClose, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { CollapsibleSection } from "@/components/common/CollapsibleSection"
+import { useIndexingPoll } from "@/hooks/useIndexingPoll"
 import { FolderPicker } from "./FolderPicker"
 import { DirectoryTreeView } from "./DirectoryTreeView"
 import { LoadedDatasetsList } from "./LoadedDatasetsList"
@@ -7,6 +9,8 @@ import { useSidebar } from "./useSidebar"
 
 export function Sidebar() {
   const { store, loading, pickFolder, scanPath, loadDataset } = useSidebar()
+  const indexing = useIndexingPoll()
+  const folderName = store.currentDirectory.split(/[\\/]/).filter(Boolean).pop()
 
   if (!store.sidebarOpen) return null
 
@@ -37,23 +41,32 @@ export function Sidebar() {
         </Button>
       </div>
 
-      <FolderPicker
-        path={store.currentDirectory}
-        loading={loading}
-        onPick={pickFolder}
-        onRefresh={() => scanPath(store.currentDirectory)}
-      />
-
-      <DirectoryTreeView
-        tree={store.directoryTree}
-        selectedPath={store.currentDirectory}
-        onSelectFile={loadDataset}
-      />
+      <CollapsibleSection
+        title="Data folder"
+        open={!store.folderCollapsed}
+        onToggle={() => store.setFolderCollapsed(!store.folderCollapsed)}
+        summary={folderName}
+        className={store.folderCollapsed ? undefined : "border-b-0"}
+      >
+        <FolderPicker
+          path={store.currentDirectory}
+          loading={loading}
+          onPick={pickFolder}
+          onRefresh={() => scanPath(store.currentDirectory)}
+        />
+        <DirectoryTreeView
+          tree={store.directoryTree}
+          selectedPath={store.currentDirectory}
+          onSelectFile={loadDataset}
+        />
+      </CollapsibleSection>
 
       <LoadedDatasetsList
         datasets={store.datasets}
         selectedId={store.selectedDatasetId}
         onSelect={store.selectDataset}
+        indexing={indexing}
+        grow={store.folderCollapsed}
       />
     </aside>
   )

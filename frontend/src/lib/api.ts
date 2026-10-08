@@ -107,6 +107,11 @@ class ApiClient {
     return data
   }
 
+  async getIndexing(): Promise<Record<string, SearchIndexStatus>> {
+    const { data } = await this.client.get("/search/indexing", { silent: true } as object)
+    return data
+  }
+
   async getSearchStatus(id: string): Promise<SearchIndexStatus> {
     const { data } = await this.client.get(`/datasets/${id}/search/status`, { silent: true } as object)
     return data

@@ -36,6 +36,14 @@ export function useSidebar() {
     }
   }
 
+  React.useEffect(() => {
+    const { currentDirectory, directoryTree } = useDatasetStore.getState()
+    if (currentDirectory && !directoryTree) {
+      api.getDirectoryTree(currentDirectory, 3).then(store.setDirectoryTree).catch(() => undefined)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const pickFolder = async () => {
     setLoading(true)
     try {

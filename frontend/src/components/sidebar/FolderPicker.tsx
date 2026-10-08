@@ -10,10 +10,7 @@ interface FolderPickerProps {
 
 export function FolderPicker({ path, loading, onPick, onRefresh }: FolderPickerProps) {
   return (
-    <div className="space-y-3 border-b-2 border-border p-4">
-      <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">
-        Data folder
-      </p>
+    <div className="space-y-3 border-b-2 border-border px-4 pb-4">
       <Button
         variant="sky"
         className="w-full justify-center"

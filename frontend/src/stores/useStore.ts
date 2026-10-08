@@ -9,6 +9,8 @@ interface DatasetState {
   sidebarWidth: number
   directoryTree: DirectoryNode | null
   currentDirectory: string
+  folderCollapsed: boolean
+  setFolderCollapsed: (collapsed: boolean) => void
   setDatasets: (datasets: Dataset[]) => void
   addDataset: (dataset: Dataset) => void
   removeDataset: (id: string) => void
@@ -30,7 +32,9 @@ export const useDatasetStore = create<DatasetState>()(
       sidebarWidth: 280,
       directoryTree: null,
       currentDirectory: "",
-      
+      folderCollapsed: false,
+      setFolderCollapsed: (collapsed) => set({ folderCollapsed: collapsed }),
+
       setDatasets: (datasets) => set({
         datasets: datasets.filter((d, i) => datasets.findIndex((x) => x.id === d.id) === i),
       }),
@@ -59,6 +63,7 @@ export const useDatasetStore = create<DatasetState>()(
         sidebarOpen: state.sidebarOpen,
         sidebarWidth: state.sidebarWidth,
         currentDirectory: state.currentDirectory,
+        folderCollapsed: state.folderCollapsed,
       }),
     }
   )

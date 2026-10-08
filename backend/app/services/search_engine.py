@@ -116,6 +116,17 @@ class SearchEngine:
             return SearchIndexStatus(state="building", indexed=job.indexed, total=job.total)
         return SearchIndexStatus(state="missing", total=dataset.row_count)
 
+    def active(self) -> Dict[str, SearchIndexStatus]:
+        """Indexes being built or that failed, by dataset id."""
+        with self._lock:
+            jobs = dict(self._jobs)
+        return {
+            dataset_id: SearchIndexStatus(
+                state="error" if job.error else "building", indexed=job.indexed, total=job.total, error=job.error,
+            )
+            for dataset_id, job in jobs.items()
+        }
+
     def build_index(self, dataset_id: str) -> SearchIndexStatus:
         """Start building the index in the background (no-op if it is ready or already building)."""
         with self._lock:
