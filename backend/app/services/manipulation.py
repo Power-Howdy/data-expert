@@ -7,8 +7,9 @@ import polars as pl
 
 from app.models.ai_schemas import PlanStep, TransformPlan
 from app.models.schemas import (
-    ChangeItem, ChangesSummary, FilterParams, ReplaceRequest, RowData, RowsResponse, SortParams,
+    ChangeItem, ChangesSummary, DataFormat, FilterParams, ReplaceRequest, RowData, RowsResponse, SortParams,
 )
+from app.services.row_cache import row_cache
 from app.models.version_schemas import VersionCommit
 from app.services.changes import ADDED_BASE, IDX, apply_changes, coerce, replace_match, with_index
 from app.services.data_loader import dataset_manager
@@ -61,11 +62,11 @@ class DataManipulationEngine:
         filters: Optional[List[FilterParams]] = None, sorts: Optional[List[SortParams]] = None,
     ) -> RowsResponse:
         if not filters and not sorts and not self.has_changes(dataset_id):
-            lf = self._source(dataset_id)
-            df = lf.slice(offset, limit).collect()
-            rows = [RowData(id=str(offset + i), data=r) for i, r in enumerate(df.iter_rows(named=True))]
             dataset = dataset_manager.get_dataset(dataset_id)
+            lf = self._source(dataset_id)
             total = dataset.row_count if dataset else lf.select(pl.len()).collect().item()
+            df = self._saved_rows(dataset_id, offset, limit, total)
+            rows = [RowData(id=str(offset + i), data=r) for i, r in enumerate(df.iter_rows(named=True))]
             return RowsResponse(rows=rows, total=total, offset=offset, limit=limit)
 
         lf = self.frame(dataset_id)
@@ -78,6 +79,14 @@ class DataManipulationEngine:
         df = lf.slice(offset, limit).collect()
         return RowsResponse(rows=[self._row(r) for r in df.iter_rows(named=True)], total=total, offset=offset, limit=limit)
 
+    def _saved_rows(self, dataset_id: str, offset: int, limit: int, total: int) -> pl.DataFrame:
+        """Rows of the file as saved (no pending edits), through the window cache."""
+        lf = self._source(dataset_id)
+        dataset = dataset_manager.get_dataset(dataset_id)
+        if not dataset:
+            return lf.slice(offset, limit).collect()
+        return row_cache.rows(dataset.path, lf, dataset.format == DataFormat.PARQUET, offset, limit, total)
+
     @staticmethod
     def _row(row: Dict[str, Any]) -> RowData:
         row_id = row.pop(IDX)
@@ -87,6 +96,11 @@ class DataManipulationEngine:
         position = self._parse_id(row_id)
         with self._lock:
             ops = list(self._ops.get(dataset_id, []))
+        dataset = dataset_manager.get_dataset(dataset_id)
+        if not ops and dataset and 0 <= position < dataset.row_count:
+            df = self._saved_rows(dataset_id, position, 1, dataset.row_count)
+            if df.height:
+                return RowData(id=str(position), data=df.row(0, named=True))
         if position < ADDED_BASE and not any(o["type"] == "transform" for o in ops):
             lf = apply_changes(self._source(dataset_id).slice(position, 1), ops, offset=position)
         else:

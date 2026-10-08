@@ -18,6 +18,7 @@ from app.services.combine import combine_engine
 from app.services.export import export_engine
 from app.services.directory_scanner import directory_scanner
 from app.services.ai.views import view_store
+from app.services.row_cache import row_cache
 from app.services.profile_store import insights_store
 from app.api.ai_routes import router as ai_router
 from app.api.version_routes import router as version_router
@@ -142,7 +143,10 @@ def load_dataset(request: LoadDatasetRequest):
 @app.delete("/api/datasets/{dataset_id}", response_model=SuccessResponse)
 async def unload_dataset(dataset_id: str):
     """Unload a dataset."""
+    dataset = dataset_manager.get_dataset(dataset_id)
     success = dataset_manager.unload_dataset(dataset_id)
+    if dataset:
+        row_cache.release(dataset.path)
     if not success:
         raise HTTPException(status_code=404, detail=f"Dataset {dataset_id} not found")
     analytics_engine.forget_profile(dataset_id)

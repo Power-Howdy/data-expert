@@ -21,6 +21,7 @@ from app.models.version_schemas import (
 )
 from app.services.changes import IDX
 from app.services.data_loader import data_loader, dataset_manager
+from app.services.row_cache import row_cache
 from app.services.versioning.deltas import build_undo
 from app.services.versioning.rebuild import Rebuilder
 from app.services.versioning.repository import Repository, fingerprint
@@ -122,6 +123,7 @@ class VersionControl:
                 undo_meta.update(prepare(commit_id))
             if undo == "snapshot":
                 repo.take_snapshot(commit_id)
+            row_cache.release(str(path))
             os.replace(tmp, path)
         except Exception:
             repo.remove_snapshot(commit_id)
