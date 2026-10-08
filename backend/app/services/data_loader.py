@@ -7,6 +7,7 @@ import pyarrow.orc as orc
 import json
 import gzip
 import os
+import threading
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Iterator, Union
 from datetime import datetime
@@ -399,6 +400,7 @@ class DatasetManager:
         self.options: Dict[str, Dict[str, Any]] = {}
         self.loader = DataLoader()
         self.registry_path = Path(registry_path or settings.data.registry_path)
+        self._lock = threading.RLock()
         self.restore()
     
     def load_dataset(self, request) -> Dataset:
@@ -454,17 +456,18 @@ class DatasetManager:
     
     def save(self) -> None:
         """Write dataset handles (path, format, options, metadata) to disk."""
-        entries = [
-            {"dataset": d.model_dump(mode="json", by_alias=True), "options": self.options.get(d.id, {})}
-            for d in self.datasets.values()
-        ]
-        try:
-            self.registry_path.parent.mkdir(parents=True, exist_ok=True)
-            tmp = self.registry_path.with_suffix(".tmp")
-            tmp.write_text(json.dumps(entries, indent=2), encoding="utf-8")
-            os.replace(tmp, self.registry_path)
-        except OSError as e:
-            logger.warning(f"Could not save dataset registry: {e}")
+        with self._lock:
+            entries = [
+                {"dataset": d.model_dump(mode="json", by_alias=True), "options": self.options.get(d.id, {})}
+                for d in list(self.datasets.values())
+            ]
+            try:
+                self.registry_path.parent.mkdir(parents=True, exist_ok=True)
+                tmp = self.registry_path.with_suffix(".tmp")
+                tmp.write_text(json.dumps(entries, indent=2), encoding="utf-8")
+                os.replace(tmp, self.registry_path)
+            except OSError as e:
+                logger.warning(f"Could not save dataset registry: {e}")
     
     def restore(self) -> None:
         """Re-open datasets from the registry; recompute metadata only for changed files."""

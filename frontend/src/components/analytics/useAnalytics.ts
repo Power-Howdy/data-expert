@@ -12,14 +12,21 @@ export function useAnalytics(dataset: Dataset | undefined) {
   const [columnDist, setColumnDist] = React.useState<any>(null)
   const [outliers, setOutliers] = React.useState<any>(null)
 
+  const datasetId = dataset?.id
+
   React.useEffect(() => {
-    if (!dataset) return
+    setOverview(null)
+    setProfile(null)
+    setActiveColumn(null)
+    if (!datasetId) return
+    let cancelled = false
     setLoading(true)
-    api.getStats(dataset.id)
-      .then(setOverview)
-      .catch(() => toast.error("Failed to load overview"))
-      .finally(() => setLoading(false))
-  }, [dataset])
+    api.getStats(datasetId)
+      .then((data) => !cancelled && setOverview(data))
+      .catch(() => !cancelled && toast.error("Failed to load overview"))
+      .finally(() => !cancelled && setLoading(false))
+    return () => { cancelled = true }
+  }, [datasetId])
 
   const loadProfile = async () => {
     if (!dataset) return

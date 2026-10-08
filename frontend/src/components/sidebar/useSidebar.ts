@@ -8,10 +8,20 @@ export function useSidebar() {
   const store = useDatasetStore()
   const [loading, setLoading] = React.useState(false)
 
-  React.useEffect(() => {
-    api.listDatasets(true).then(store.setDatasets).catch(() => {})
+  const syncDatasets = React.useCallback(async () => {
+    try {
+      store.setDatasets(await api.listDatasets(true))
+    } catch {
+      // backend unavailable; keep the current list
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  React.useEffect(() => {
+    syncDatasets()
+    window.addEventListener("focus", syncDatasets)
+    return () => window.removeEventListener("focus", syncDatasets)
+  }, [syncDatasets])
 
   const scanPath = async (path: string) => {
     if (!path.trim()) return
@@ -46,9 +56,7 @@ export function useSidebar() {
     try {
       toast.loading("Loading dataset...", { id: "load" })
       const dataset = await api.loadDataset(file.path)
-      const exists = store.datasets.some((d) => d.id === dataset.id)
-      if (!exists) store.addDataset(dataset)
-      else store.setDatasets(store.datasets.map((d) => (d.id === dataset.id ? dataset : d)))
+      await syncDatasets()
       store.selectDataset(dataset.id)
       toast.success("Dataset loaded!", { id: "load" })
     } catch {

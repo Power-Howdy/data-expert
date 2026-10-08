@@ -12,6 +12,42 @@ from app.services.data_loader import dataset_manager
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_PROFILE_SAMPLE = 100_000
+MAX_TOP_VALUE_CHARS = 200
+
+
+def numeric_values(series: pl.Series) -> pl.Series:
+    """Non-null, non-NaN values of a numeric series."""
+    values = series.drop_nulls()
+    if values.dtype.is_float():
+        values = values.filter(values.is_not_nan())
+    return values
+
+
+def histogram(values: pl.Series, bins: int) -> Dict[str, List[float]]:
+    """Histogram as counts plus bin edges (len(counts) + 1)."""
+    if values.len() == 0:
+        return {"bins": [], "bin_edges": []}
+    hist = values.hist(bin_count=bins)
+    edges = [float(values.min())] + [float(b) for b in hist["breakpoint"].to_list()]
+    return {"bins": hist["count"].to_list(), "bin_edges": edges}
+
+
+def numeric_summary(values: pl.Series) -> Dict[str, float]:
+    return {
+        "min": float(values.min()),
+        "max": float(values.max()),
+        "mean": float(values.mean()),
+        "std": float(values.std()) if values.len() > 1 else 0.0,
+        "median": float(values.median()),
+    }
+
+
+def display_value(value: Any) -> Any:
+    if isinstance(value, str) and len(value) > MAX_TOP_VALUE_CHARS:
+        return value[:MAX_TOP_VALUE_CHARS] + "…"
+    return value
+
 
 class AnalyticsEngine:
     """Compute analytics and statistics for datasets."""
@@ -29,24 +65,28 @@ class AnalyticsEngine:
         if lf is None:
             raise ValueError(f"DataFrame for {dataset_id} not found")
         
-        df = lf.collect()
+        stats = dataset.stats
+        if stats is None:
+            stats = dataset_manager.loader.get_stats(lf, dataset.columns_schema)
+            dataset.stats = stats
         
-        column_types = {}
+        column_types: Dict[str, int] = {}
         for col in dataset.columns_schema:
             column_types[col.type.value] = column_types.get(col.type.value, 0) + 1
         
         return AnalyticsOverview(
             dataset_id=dataset_id,
-            row_count=dataset.row_count,
-            column_count=dataset.column_count,
-            memory_bytes=df.estimated_size(),
-            missing_percentage=dataset.stats.missing_percentage if dataset.stats else 0,
-            duplicate_rows=df.n_unique() - df.height if df.height > 0 else 0,
+            row_count=stats.row_count,
+            column_count=stats.column_count,
+            memory_bytes=stats.memory_bytes,
+            missing_percentage=stats.missing_percentage,
+            duplicate_rows=stats.duplicate_rows,
             column_types=column_types
         )
     
     def profile_dataset(self, dataset_id: str, sample_size: Optional[int] = None) -> DatasetProfile:
-        """Generate full dataset profile."""
+        """Generate dataset profile; large datasets are sampled by default."""
+        sample_size = sample_size or DEFAULT_PROFILE_SAMPLE
         cache_key = f"{dataset_id}:{sample_size}"
         if cache_key in self._cache:
             return self._cache[cache_key]
@@ -59,8 +99,9 @@ class AnalyticsEngine:
         if lf is None:
             raise ValueError(f"DataFrame for {dataset_id} not found")
         
-        if sample_size and dataset.row_count > sample_size:
-            df = lf.sample(n=sample_size, seed=42).collect()
+        if dataset.row_count > sample_size:
+            step = -(-dataset.row_count // sample_size)
+            df = lf.gather_every(step).collect()
         else:
             df = lf.collect()
         
@@ -107,30 +148,24 @@ class AnalyticsEngine:
             unique_percentage=unique_percentage,
         )
         
-        if col_type in (DataType.INTEGER, DataType.FLOAT) and non_null.len() > 0:
-            profile.min = float(non_null.min())
-            profile.max = float(non_null.max())
-            profile.mean = float(non_null.mean())
-            profile.std = float(non_null.std()) if non_null.len() > 1 else 0
-            profile.median = float(non_null.median())
-            
-            quantiles = non_null.quantile([0.25, 0.5, 0.75], interpolation="nearest")
+        values = numeric_values(series) if col_type in (DataType.INTEGER, DataType.FLOAT) else None
+        if values is not None and values.len() > 0:
+            summary = numeric_summary(values)
+            profile.min = summary["min"]
+            profile.max = summary["max"]
+            profile.mean = summary["mean"]
+            profile.std = summary["std"]
+            profile.median = summary["median"]
             profile.quantiles = {
-                "q1": float(quantiles[0]),
-                "q2": float(quantiles[1]),
-                "q3": float(quantiles[2]),
+                f"q{i + 1}": float(values.quantile(q, interpolation="nearest"))
+                for i, q in enumerate((0.25, 0.5, 0.75))
             }
-            
-            hist = non_null.hist(bins=20)
-            profile.histogram = {
-                "bins": hist[0].to_list(),
-                "bin_edges": hist[1].to_list(),
-            }
+            profile.histogram = histogram(values, 20)
         
         elif col_type == DataType.STRING and non_null.len() > 0:
             value_counts = non_null.value_counts().sort("count", descending=True).head(20)
             profile.top_values = [
-                {"value": row[col_name], "count": row["count"]}
+                {"value": display_value(row[col_name]), "count": row["count"]}
                 for row in value_counts.iter_rows(named=True)
             ]
         
@@ -165,7 +200,9 @@ class AnalyticsEngine:
             for i, col1 in enumerate(numeric_cols):
                 result[col1] = {}
                 for j, col2 in enumerate(numeric_cols):
-                    result[col1][col2] = float(corr_matrix[i, j])
+                    value = corr_matrix[i, j]
+                    if value is not None and np.isfinite(value):
+                        result[col1][col2] = float(value)
             
             return result
         except Exception as e:
@@ -225,27 +262,21 @@ class AnalyticsEngine:
         non_null = series.drop_nulls()
         
         if col_schema.type in (DataType.INTEGER, DataType.FLOAT):
-            hist = non_null.hist(bins=bins)
+            values = numeric_values(series)
             return {
                 "type": "histogram",
-                "bins": hist[0].to_list(),
-                "bin_edges": hist[1].to_list(),
-                "stats": {
-                    "min": float(non_null.min()),
-                    "max": float(non_null.max()),
-                    "mean": float(non_null.mean()),
-                    "std": float(non_null.std()) if non_null.len() > 1 else 0,
-                    "median": float(non_null.median()),
-                }
+                **histogram(values, bins),
+                "stats": numeric_summary(values) if values.len() > 0 else {},
             }
-        else:
-            value_counts = non_null.value_counts().sort("count", descending=True)
-            return {
-                "type": "bar",
-                "values": value_counts[column].to_list(),
-                "counts": value_counts["count"].to_list(),
-                "total_unique": non_null.n_unique(),
-            }
+        if col_schema.type not in (DataType.STRING, DataType.BOOLEAN, DataType.DATE, DataType.DATETIME):
+            return {"type": "bar", "values": [], "counts": [], "total_unique": 0}
+        value_counts = non_null.value_counts().sort("count", descending=True).head(50)
+        return {
+            "type": "bar",
+            "values": [display_value(v) for v in value_counts[column].to_list()],
+            "counts": value_counts["count"].to_list(),
+            "total_unique": non_null.n_unique(),
+        }
     
     def detect_outliers(
         self, 
@@ -263,7 +294,9 @@ class AnalyticsEngine:
         if lf is None:
             raise ValueError(f"DataFrame for {dataset_id} not found")
         
-        series = lf.select(pl.col(column)).collect()[column].drop_nulls()
+        series = numeric_values(lf.select(pl.col(column)).collect()[column])
+        if not series.dtype.is_numeric() or series.len() == 0:
+            return {"outliers": [], "count": 0, "method": method, "threshold": threshold, "bounds": None}
         
         if method == "iqr":
             q1 = series.quantile(0.25, interpolation="nearest")
@@ -285,7 +318,7 @@ class AnalyticsEngine:
             raise ValueError(f"Unknown method: {method}")
         
         return {
-            "outliers": outliers.to_list(),
+            "outliers": outliers.head(1000).to_list(),
             "count": outliers.len(),
             "method": method,
             "threshold": threshold,

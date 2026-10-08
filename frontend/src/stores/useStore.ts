@@ -31,9 +31,11 @@ export const useDatasetStore = create<DatasetState>()(
       directoryTree: null,
       currentDirectory: "",
       
-      setDatasets: (datasets) => set({ datasets }),
-      addDataset: (dataset) => set((state) => ({ 
-        datasets: [...state.datasets, dataset] 
+      setDatasets: (datasets) => set({
+        datasets: datasets.filter((d, i) => datasets.findIndex((x) => x.id === d.id) === i),
+      }),
+      addDataset: (dataset) => set((state) => ({
+        datasets: [...state.datasets.filter((d) => d.id !== dataset.id), dataset],
       })),
       removeDataset: (id) => set((state) => ({ 
         datasets: state.datasets.filter((d) => d.id !== id),

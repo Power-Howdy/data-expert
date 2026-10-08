@@ -92,7 +92,7 @@ async def pick_directory():
 
 
 @app.get("/api/directories/tree")
-async def get_directory_tree(path: str = Query(...), max_depth: int = Query(3)):
+def get_directory_tree(path: str = Query(...), max_depth: int = Query(3)):
     """Get directory tree for sidebar."""
     try:
         tree = directory_scanner.get_directory_tree(path, max_depth)
@@ -102,7 +102,7 @@ async def get_directory_tree(path: str = Query(...), max_depth: int = Query(3)):
 
 
 @app.post("/api/directories/scan", response_model=ScanResponse)
-async def scan_directory(request: ScanRequest):
+def scan_directory(request: ScanRequest):
     """Scan directory for data files."""
     try:
         return directory_scanner.scan(request)
@@ -124,7 +124,7 @@ async def get_dataset_info(dataset_id: str):
 
 
 @app.post("/api/datasets/load", response_model=Dataset)
-async def load_dataset(request: LoadDatasetRequest):
+def load_dataset(request: LoadDatasetRequest):
     """Load a dataset from path."""
     try:
         return dataset_manager.load_dataset(request)
@@ -144,7 +144,7 @@ async def unload_dataset(dataset_id: str):
 # ==================== Data Browsing ====================
 
 @app.get("/api/datasets/{dataset_id}/rows", response_model=RowsResponse)
-async def get_rows(
+def get_rows(
     dataset_id: str,
     offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=10000),
@@ -206,7 +206,7 @@ async def stream_rows(
 # ==================== Search ====================
 
 @app.post("/api/datasets/{dataset_id}/search", response_model=SearchResponse)
-async def search_dataset(dataset_id: str, request: SearchRequest):
+def search_dataset(dataset_id: str, request: SearchRequest):
     """Full-text search in dataset."""
     dataset = get_dataset(dataset_id)
     request.dataset_id = dataset_id
@@ -218,7 +218,7 @@ async def search_dataset(dataset_id: str, request: SearchRequest):
 
 
 @app.get("/api/datasets/{dataset_id}/search/suggest")
-async def search_suggest(dataset_id: str, q: str = Query(...), limit: int = Query(10)):
+def search_suggest(dataset_id: str, q: str = Query(...), limit: int = Query(10)):
     """Get search suggestions."""
     dataset = get_dataset(dataset_id)
     try:
@@ -229,7 +229,7 @@ async def search_suggest(dataset_id: str, q: str = Query(...), limit: int = Quer
 
 
 @app.post("/api/datasets/{dataset_id}/search/index")
-async def build_search_index(dataset_id: str):
+def build_search_index(dataset_id: str):
     """Build search index for dataset."""
     dataset = get_dataset(dataset_id)
     try:
@@ -242,7 +242,7 @@ async def build_search_index(dataset_id: str):
 # ==================== Analytics ====================
 
 @app.get("/api/datasets/{dataset_id}/stats", response_model=AnalyticsOverview)
-async def get_stats(dataset_id: str):
+def get_stats(dataset_id: str):
     """Get dataset overview statistics."""
     dataset = get_dataset(dataset_id)
     try:
@@ -252,7 +252,7 @@ async def get_stats(dataset_id: str):
 
 
 @app.get("/api/datasets/{dataset_id}/profile", response_model=DatasetProfile)
-async def get_profile(dataset_id: str, sample_size: Optional[int] = Query(None)):
+def get_profile(dataset_id: str, sample_size: Optional[int] = Query(None)):
     """Get full dataset profile."""
     dataset = get_dataset(dataset_id)
     try:
@@ -262,7 +262,7 @@ async def get_profile(dataset_id: str, sample_size: Optional[int] = Query(None))
 
 
 @app.get("/api/datasets/{dataset_id}/distributions/{column}")
-async def get_distribution(dataset_id: str, column: str, bins: int = Query(50)):
+def get_distribution(dataset_id: str, column: str, bins: int = Query(50)):
     """Get column distribution."""
     dataset = get_dataset(dataset_id)
     try:
@@ -272,7 +272,7 @@ async def get_distribution(dataset_id: str, column: str, bins: int = Query(50)):
 
 
 @app.get("/api/datasets/{dataset_id}/outliers/{column}")
-async def get_outliers(
+def get_outliers(
     dataset_id: str, 
     column: str, 
     method: str = Query("iqr"),
@@ -289,7 +289,7 @@ async def get_outliers(
 # ==================== Data Manipulation ====================
 
 @app.post("/api/datasets/{dataset_id}/rows", response_model=RowData)
-async def add_row(dataset_id: str, request: AddRowRequest):
+def add_row(dataset_id: str, request: AddRowRequest):
     """Add a new row."""
     dataset = get_dataset(dataset_id)
     try:
@@ -299,7 +299,7 @@ async def add_row(dataset_id: str, request: AddRowRequest):
 
 
 @app.put("/api/datasets/{dataset_id}/rows/{row_id}", response_model=RowData)
-async def update_row(dataset_id: str, row_id: str, request: UpdateRowRequest):
+def update_row(dataset_id: str, row_id: str, request: UpdateRowRequest):
     """Update a row."""
     dataset = get_dataset(dataset_id)
     try:
@@ -309,7 +309,7 @@ async def update_row(dataset_id: str, row_id: str, request: UpdateRowRequest):
 
 
 @app.delete("/api/datasets/{dataset_id}/rows/{row_id}", response_model=SuccessResponse)
-async def delete_row(dataset_id: str, row_id: str):
+def delete_row(dataset_id: str, row_id: str):
     """Delete a row."""
     dataset = get_dataset(dataset_id)
     try:
@@ -320,7 +320,7 @@ async def delete_row(dataset_id: str, row_id: str):
 
 
 @app.post("/api/datasets/{dataset_id}/replace", response_model=SuccessResponse)
-async def replace_values(dataset_id: str, request: ReplaceRequest):
+def replace_values(dataset_id: str, request: ReplaceRequest):
     """Replace values in a column."""
     dataset = get_dataset(dataset_id)
     try:
@@ -331,7 +331,7 @@ async def replace_values(dataset_id: str, request: ReplaceRequest):
 
 
 @app.post("/api/datasets/{dataset_id}/transform", response_model=SuccessResponse)
-async def transform_dataset(dataset_id: str, request: TransformRequest):
+def transform_dataset(dataset_id: str, request: TransformRequest):
     """Apply transformations."""
     dataset = get_dataset(dataset_id)
     try:
@@ -342,7 +342,7 @@ async def transform_dataset(dataset_id: str, request: TransformRequest):
 
 
 @app.post("/api/datasets/{dataset_id}/commit", response_model=SuccessResponse)
-async def commit_changes(dataset_id: str):
+def commit_changes(dataset_id: str):
     """Commit pending changes to disk."""
     dataset = get_dataset(dataset_id)
     try:
@@ -363,7 +363,7 @@ async def discard_changes(dataset_id: str):
 # ==================== Combine/Separate ====================
 
 @app.post("/api/datasets/combine", response_model=Dataset)
-async def combine_datasets(request: CombineRequest):
+def combine_datasets(request: CombineRequest):
     """Combine multiple datasets."""
     try:
         return combine_engine.combine(request)
@@ -372,7 +372,7 @@ async def combine_datasets(request: CombineRequest):
 
 
 @app.post("/api/datasets/separate", response_model=List[Dataset])
-async def separate_dataset(request: SeparateRequest):
+def separate_dataset(request: SeparateRequest):
     """Separate dataset by column values."""
     try:
         return combine_engine.separate(request)
@@ -381,7 +381,7 @@ async def separate_dataset(request: SeparateRequest):
 
 
 @app.post("/api/datasets/combine/preview")
-async def preview_combine(
+def preview_combine(
     dataset_ids: List[str] = Body(...),
     strategy: str = Body("concat"),
     join_config: Optional[Dict[str, Any]] = Body(None),
@@ -398,7 +398,7 @@ async def preview_combine(
 # ==================== Export ====================
 
 @app.post("/api/datasets/{dataset_id}/export")
-async def export_dataset(dataset_id: str, request: ExportRequest):
+def export_dataset(dataset_id: str, request: ExportRequest):
     """Export dataset to file."""
     dataset = get_dataset(dataset_id)
     request.dataset_id = dataset_id
