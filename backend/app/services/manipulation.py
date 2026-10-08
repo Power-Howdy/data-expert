@@ -1,23 +1,22 @@
 """Row browsing and editing. Edits are pending (kept in memory, applied lazily) until committed to the file."""
 import logging
-import os
 import threading
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import polars as pl
 
 from app.models.ai_schemas import PlanStep, TransformPlan
 from app.models.schemas import (
-    ChangeItem, ChangesSummary, DataFormat, FilterParams, LoadDatasetRequest, ReplaceRequest, RowData,
-    RowsResponse, SortParams,
+    ChangeItem, ChangesSummary, FilterParams, ReplaceRequest, RowData, RowsResponse, SortParams,
 )
+from app.models.version_schemas import VersionCommit
 from app.services.changes import ADDED_BASE, IDX, apply_changes, coerce, replace_match, with_index
-from app.services.data_loader import data_loader, dataset_manager
+from app.services.data_loader import dataset_manager
 from app.services.functions.expressions import filter_expr
+from app.services.functions.library import function_library
+from app.services.versioning.service import version_control
 
 logger = logging.getLogger(__name__)
-SINKS = {DataFormat.PARQUET: "sink_parquet", DataFormat.JSONL: "sink_ndjson", DataFormat.CSV: "sink_csv"}
 LABEL_CHARS = 60
 
 
@@ -164,6 +163,7 @@ class DataManipulationEngine:
         self._record(dataset_id, {
             "type": "transform", "description": description,
             "steps": [s.model_dump(include={"op", "params"}) for s in steps],
+            "functions": function_library.embed([s.op for s in steps]),
         })
         return len(steps)
 
@@ -206,39 +206,24 @@ class DataManipulationEngine:
             self._ops.pop(dataset_id, None)
             self._added.pop(dataset_id, None)
 
-    def commit_changes(self, dataset_id: str) -> Dict[str, Any]:
-        """Write the edited data back to the dataset's file, then reload it under the same id."""
-        dataset = dataset_manager.get_dataset(dataset_id)
-        if not dataset:
+    def commit_changes(self, dataset_id: str, message: str = "") -> VersionCommit:
+        """Write the edited data back to the dataset's file as a new version, then reload it under the same id."""
+        if not dataset_manager.get_dataset(dataset_id):
             raise ValueError(f"Dataset {dataset_id} not found")
         if not self.has_changes(dataset_id):
-            return {"rows": dataset.row_count}
-        lf = self.frame(dataset_id).drop(IDX)
-        path = Path(dataset.path)
-        tmp = path.with_name(f".{path.stem}.dx-tmp{path.suffix}")
-        try:
-            self._write(lf, tmp, dataset.format)
-            os.replace(tmp, path)
-        finally:
-            tmp.unlink(missing_ok=True)
+            raise ValueError("There are no changes to save")
+        with self._lock:
+            ops = list(self._ops.get(dataset_id, []))
+        summary = self.summary(dataset_id)
+        labels = [i.label for i in summary.items]
+        if not message.strip():
+            message = labels[0] if len(labels) == 1 else f"{len(labels)} changes: " + "; ".join(labels[:3])
+        commit = version_control.commit_edits(
+            dataset_id, self.frame(dataset_id), ops, message.strip()[:500], labels,
+            summary.model_dump(include={"added", "updated", "deleted", "replaced", "transformed"}),
+        )
         self.discard_changes(dataset_id)
-        reloaded = dataset_manager.load_dataset(LoadDatasetRequest(
-            path=str(path), name=dataset.name, format=dataset.format, options=dataset_manager.options.get(dataset_id) or {},
-        ))
-        return {"rows": reloaded.row_count}
-
-    @staticmethod
-    def _write(lf: pl.LazyFrame, path: Path, fmt: DataFormat) -> None:
-        if fmt == DataFormat.CSV and any(isinstance(t, (pl.List, pl.Struct, pl.Array)) for t in lf.collect_schema().values()):
-            raise ValueError("CSV cannot store list or nested columns")
-        sink = SINKS.get(fmt)
-        if sink:
-            try:
-                return getattr(lf, sink)(path)
-            except Exception as e:
-                logger.info(f"Streaming write failed, falling back to in-memory write: {e}")
-                path.unlink(missing_ok=True)
-        data_loader.write(lf.collect(), str(path), fmt)
+        return commit
 
 
 manipulation_engine = DataManipulationEngine()

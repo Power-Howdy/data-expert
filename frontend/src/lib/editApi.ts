@@ -1,5 +1,6 @@
 import { api } from "@/lib/api"
 import type { RowData } from "@/types"
+import type { VersionCommit } from "@/types/version"
 
 const http = api.client
 const LONG = { timeout: 0 }
@@ -59,8 +60,9 @@ export const editApi = {
   async undo(datasetId: string): Promise<ChangesSummary> {
     return (await http.post(`/datasets/${datasetId}/changes/undo`)).data
   },
-  async commit(datasetId: string): Promise<void> {
-    await http.post(`/datasets/${datasetId}/commit`, null, LONG)
+  /** Write pending edits to the file as a new version. */
+  async commit(datasetId: string, message = ""): Promise<VersionCommit> {
+    return (await http.post(`/datasets/${datasetId}/commit`, { message }, LONG)).data
   },
   async discard(datasetId: string): Promise<void> {
     await http.post(`/datasets/${datasetId}/discard`)

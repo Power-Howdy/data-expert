@@ -1,5 +1,5 @@
 "use client"
-import { BarChart3, Combine, Download, Moon, PanelLeft, Sun, Table2 } from "lucide-react"
+import { BarChart3, Combine, Download, GitBranch, Moon, PanelLeft, Sun, Table2 } from "lucide-react"
 import { useDatasetStore, useUIStore } from "@/stores/useStore"
 import { Button } from "@/components/ui/button"
 import { AISettingsButton } from "@/components/settings/AISettingsButton"
@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 const tabs = [
   { id: "browse", label: "Browse", icon: Table2 },
   { id: "analytics", label: "Stats", icon: BarChart3 },
+  { id: "history", label: "History", icon: GitBranch },
   { id: "export", label: "Export", icon: Download },
   { id: "combine", label: "Combine", icon: Combine },
 ] as const

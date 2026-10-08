@@ -63,14 +63,12 @@ class FunctionLibrary:
         spec = spec.model_copy(update={"source": "generated", "created_at": spec.created_at or datetime.now()})
         with self._lock:
             self._generated[spec.name] = spec
-            self._compiled.pop(spec.name, None)
             self._save()
         return spec
 
     def delete(self, name: str) -> bool:
         with self._lock:
             removed = self._generated.pop(name, None) is not None
-            self._compiled.pop(name, None)
             if removed:
                 self._save()
             return removed
@@ -106,8 +104,15 @@ class FunctionLibrary:
                 problems.append(f"'{p.name}' must be one of {', '.join(p.options)}")
         return problems
 
-    def apply(self, lf: pl.LazyFrame, name: str, params: Dict[str, Any]) -> pl.LazyFrame:
-        spec = self.get(name)
+    def embed(self, names: List[str]) -> Dict[str, Dict[str, Any]]:
+        """Specs of the generated functions among `names`, stored with recorded steps so they replay identically later."""
+        specs = (self.get(n) for n in set(names) if n not in BUILTINS)
+        return {s.name: s.model_dump(mode="json") for s in specs if s}
+
+    def apply(
+        self, lf: pl.LazyFrame, name: str, params: Dict[str, Any], embedded: Optional[Dict[str, Dict[str, Any]]] = None,
+    ) -> pl.LazyFrame:
+        spec = FunctionSpec(**embedded[name]) if embedded and name in embedded else self.get(name)
         if not spec:
             raise ValueError(f"Unknown function '{name}'")
         params = self.with_defaults(spec, params)
@@ -119,10 +124,11 @@ class FunctionLibrary:
         return run_function(self._compiled_fn(spec), lf, params)
 
     def _compiled_fn(self, spec: FunctionSpec) -> Callable:
+        code = spec.code or ""
         with self._lock:
-            if spec.name not in self._compiled:
-                self._compiled[spec.name] = compile_function(spec.code or "")
-            return self._compiled[spec.name]
+            if code not in self._compiled:
+                self._compiled[code] = compile_function(code)
+            return self._compiled[code]
 
     def catalog(self) -> str:
         """Compact one-line-per-function description used in prompts."""

@@ -101,7 +101,7 @@ def test_commit_writes_file(make_dataset, fmt):
     engine.update_row(ds.id, "3", {"name": "Zed"})
     engine.delete_row(ds.id, "1")
     engine.add_row(ds.id, {"name": "New", "age": 1})
-    assert engine.commit_changes(ds.id) == {"rows": 4}
+    assert engine.commit_changes(ds.id).row_count == 4
     assert not engine.has_changes(ds.id)
     written = pl.read_parquet(ds.path) if fmt == "parquet" else pl.read_ndjson(ds.path)
     assert written["name"].to_list() == ["Ann", "Cid", "Zed", "New"]

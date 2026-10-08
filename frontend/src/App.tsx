@@ -8,6 +8,7 @@ import { BrowseTab } from "@/components/browse/BrowseTab"
 import { AnalyticsTab } from "@/components/analytics/AnalyticsTab"
 import { ExportTab } from "@/components/export/ExportTab"
 import { CombineTab } from "@/components/combine/CombineTab"
+import { HistoryTab } from "@/components/history/HistoryTab"
 import { AISettingsPanel } from "@/components/settings/AISettingsPanel"
 import { useUIStore } from "@/stores/useStore"
 import { useAIStore } from "@/stores/useAIStore"
@@ -32,6 +33,7 @@ function MainContent() {
         <div className="mx-auto h-full max-w-7xl">
           {activeTab === "browse" && <BrowseTab />}
           {activeTab === "analytics" && <AnalyticsTab />}
+          {activeTab === "history" && <HistoryTab />}
           {activeTab === "export" && <ExportTab />}
           {activeTab === "combine" && <CombineTab />}
         </div>

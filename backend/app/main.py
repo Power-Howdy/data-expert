@@ -20,6 +20,8 @@ from app.services.directory_scanner import directory_scanner
 from app.services.ai.views import view_store
 from app.services.profile_store import insights_store
 from app.api.ai_routes import router as ai_router
+from app.api.version_routes import router as version_router
+from app.models.version_schemas import CommitRequest, VersionCommit
 from app.models.schemas import (
     Dataset, LoadDatasetRequest, ScanRequest, ScanResponse,
     PaginationParams, FilterParams, SortParams, FilterRequest, SortRequest,
@@ -58,6 +60,7 @@ app.add_middleware(
 )
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.include_router(ai_router)
+app.include_router(version_router)
 
 
 # Dependency for dataset validation
@@ -384,14 +387,14 @@ def undo_change(dataset_id: str):
     return manipulation_engine.summary(dataset_id)
 
 
-@app.post("/api/datasets/{dataset_id}/commit", response_model=SuccessResponse)
-def commit_changes(dataset_id: str):
-    """Write pending edits to the dataset's file."""
+@app.post("/api/datasets/{dataset_id}/commit", response_model=VersionCommit)
+def commit_changes(dataset_id: str, request: Optional[CommitRequest] = None):
+    """Write pending edits to the dataset's file as a new version."""
     get_dataset(dataset_id)
-    result = _edit(manipulation_engine.commit_changes, dataset_id)
+    commit = _edit(manipulation_engine.commit_changes, dataset_id, request.message if request else "")
     view_store.drop_dataset(dataset_id)
     search_engine.delete_index(dataset_id)
-    return SuccessResponse(message="Changes saved to file", data=result)
+    return commit
 
 
 @app.post("/api/datasets/{dataset_id}/discard", response_model=SuccessResponse)

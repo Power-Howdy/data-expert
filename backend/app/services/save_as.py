@@ -40,15 +40,19 @@ def save_as_dataset(dataset_id: str, request: SaveAsRequest) -> Dataset:
     schema = lf.collect_schema()
     for f in request.filters:
         lf = lf.filter(filter_expr(schema, f.column, f.operator, f.value))
+    return write_new_dataset(source, lf, request.name, request.format, request.overwrite)
 
-    name = _safe_name(request.name)
-    target = Path(source.path).parent / f"{name}{EXTENSIONS[request.format]}"
+
+def write_new_dataset(source: Dataset, lf: pl.LazyFrame, name: str, fmt: str, overwrite: bool = False) -> Dataset:
+    """Write `lf` next to `source` as a new file and open it."""
+    name = _safe_name(name)
+    target = Path(source.path).parent / f"{name}{EXTENSIONS[fmt]}"
     if target.resolve() == Path(source.path).resolve():
         raise ValueError("Choose a different name; this would overwrite the source dataset")
-    if target.exists() and not request.overwrite:
+    if target.exists() and not overwrite:
         raise FileExistsError(f"{target.name} already exists")
-    if request.format == "csv" and any(isinstance(t, (pl.List, pl.Struct, pl.Array)) for t in schema.values()):
+    if fmt == "csv" and any(isinstance(t, (pl.List, pl.Struct, pl.Array)) for t in lf.collect_schema().values()):
         raise ValueError("CSV cannot store list or nested columns; choose Parquet or JSONL")
 
-    _write(lf, target, request.format)
+    _write(lf, target, fmt)
     return dataset_manager.load_dataset(LoadDatasetRequest(path=str(target), name=name))

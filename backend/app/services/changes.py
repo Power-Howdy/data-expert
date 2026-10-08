@@ -109,7 +109,7 @@ def _replace(lf: pl.LazyFrame, op: Dict[str, Any]) -> pl.LazyFrame:
 def _transform(lf: pl.LazyFrame, op: Dict[str, Any]) -> pl.LazyFrame:
     lf = lf.drop(IDX)
     for step in op["steps"]:
-        lf = function_library.apply(lf, step["op"], step.get("params", {}))
+        lf = function_library.apply(lf, step["op"], step.get("params", {}), op.get("functions"))
     return with_index(lf)
 
 
