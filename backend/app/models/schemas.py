@@ -44,11 +44,12 @@ class ColumnSchema(BaseModel):
 
 
 class DatasetStats(BaseModel):
+    """Cheap facts gathered when a file is opened. None means too costly to compute without scanning a large file."""
     row_count: int
     column_count: int
     memory_bytes: int
-    missing_percentage: float
-    duplicate_rows: int
+    missing_percentage: Optional[float] = None
+    duplicate_rows: Optional[int] = None
 
 
 class Dataset(BaseModel):
@@ -263,8 +264,8 @@ class AnalyticsOverview(BaseModel):
     row_count: int
     column_count: int
     memory_bytes: int
-    missing_percentage: float
-    duplicate_rows: int
+    missing_percentage: Optional[float] = None
+    duplicate_rows: Optional[int] = None
     column_types: Dict[str, int]
 
 

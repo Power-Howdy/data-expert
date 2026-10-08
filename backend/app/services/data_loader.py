@@ -62,6 +62,36 @@ def csv_encoding(encoding: Optional[str]) -> str:
     return "utf8"
 
 
+FULL_STATS_LIMIT_BYTES = 256 * 1024 * 1024
+
+
+def parquet_footer_stats(path: str, column_count: int) -> Optional[DatasetStats]:
+    """Row count, size and null counts from the Parquet footer: no data pages are read."""
+    try:
+        meta = pq.ParquetFile(path).metadata
+    except (OSError, ValueError, pa.ArrowException):
+        return None
+    rows, uncompressed, nulls, complete = meta.num_rows, 0, 0, True
+    leaf_count = meta.num_columns
+    for g in range(meta.num_row_groups):
+        group = meta.row_group(g)
+        uncompressed += group.total_byte_size
+        for c in range(leaf_count):
+            stats = group.column(c).statistics
+            if stats is None or not stats.has_null_count:
+                complete = False
+            else:
+                nulls += stats.null_count
+    # Null counts are per leaf column; nested columns have several leaves, so this is an estimate there.
+    cells = rows * leaf_count
+    return DatasetStats(
+        row_count=rows,
+        column_count=column_count,
+        memory_bytes=uncompressed,
+        missing_percentage=(nulls / cells * 100 if cells else 0.0) if complete else None,
+    )
+
+
 def polars_to_pydantic_type(dtype: pl.DataType) -> DataType:
     """Convert Polars data type to our DataType enum."""
     if dtype in (pl.Utf8, pl.String):
@@ -281,25 +311,33 @@ class DataLoader:
             ))
         return columns
     
-    def get_stats(self, lf: pl.LazyFrame, schema: List[ColumnSchema]) -> DatasetStats:
-        """Compute dataset statistics."""
+    def get_stats(
+        self, lf: pl.LazyFrame, schema: List[ColumnSchema], path: Optional[str] = None,
+        format: Optional[DataFormat] = None,
+    ) -> DatasetStats:
+        """Facts shown right after opening a file. Never scans a large file: opening must stay instant."""
+        column_count = len(schema)
+        if format == DataFormat.PARQUET and path:
+            stats = parquet_footer_stats(path, column_count)
+            if stats:
+                return stats
+        row_count = lf.select(pl.len()).collect().item()
+        size = Path(path).stat().st_size if path else 0
+        if path and size >= FULL_STATS_LIMIT_BYTES:
+            return DatasetStats(row_count=row_count, column_count=column_count, memory_bytes=size)
         df = lf.collect()
-        row_count = df.height
-        column_count = df.width
-        memory_bytes = df.estimated_size()
-        
-        null_count = df.null_count().sum_horizontal().item()
         total_cells = row_count * column_count
-        missing_percentage = (null_count / total_cells * 100) if total_cells > 0 else 0
-        
-        duplicate_rows = df.n_unique() - row_count
-        
+        null_count = df.null_count().sum_horizontal().item() if column_count else 0
+        try:
+            duplicates: Optional[int] = max(0, row_count - df.n_unique())
+        except pl.exceptions.PolarsError:
+            duplicates = None
         return DatasetStats(
             row_count=row_count,
             column_count=column_count,
-            memory_bytes=memory_bytes,
-            missing_percentage=missing_percentage,
-            duplicate_rows=max(0, duplicate_rows)
+            memory_bytes=df.estimated_size(),
+            missing_percentage=(null_count / total_cells * 100) if total_cells else 0.0,
+            duplicate_rows=duplicates,
         )
     
     def stream_rows(
@@ -428,7 +466,7 @@ class DatasetManager:
         self.loader._cache = {k: v for k, v in self.loader._cache.items() if not k.startswith(f"{path}:")}
         lf = self.loader.load_lazy(path, format, **options)
         schema = self.loader.get_schema(lf)
-        stats = self.loader.get_stats(lf, schema)
+        stats = self.loader.get_stats(lf, schema, path, format)
         file_stat = Path(path).stat()
         dataset = Dataset(
             name=name,

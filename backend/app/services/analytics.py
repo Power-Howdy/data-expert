@@ -68,7 +68,7 @@ class AnalyticsEngine:
         
         stats = dataset.stats
         if stats is None:
-            stats = dataset_manager.loader.get_stats(lf, dataset.columns_schema)
+            stats = dataset_manager.loader.get_stats(lf, dataset.columns_schema, dataset.path, dataset.format)
             dataset.stats = stats
         
         column_types: Dict[str, int] = {}

@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Documentation
-    url: https://github.com/OWNER/data-expert/tree/main/docs
+    url: https://github.com/power-howdy/data-expert/tree/main/docs
     about: Guides for installation, features, configuration and development.
   - name: Report a security vulnerability
-    url: https://github.com/OWNER/data-expert/security/advisories/new
+    url: https://github.com/power-howdy/data-expert/security/advisories/new
     about: Please report security issues privately.

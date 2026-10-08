@@ -50,7 +50,7 @@ class CombineEngine:
         # Create new dataset entry
         new_lf = data_loader.load_lazy(output_path, request.output_format)
         schema = data_loader.get_schema(new_lf)
-        stats = data_loader.get_stats(new_lf, schema)
+        stats = data_loader.get_stats(new_lf, schema, output_path, request.output_format)
         
         dataset = Dataset(
             name=request.output_name,
@@ -167,7 +167,7 @@ class CombineEngine:
             
             new_lf = data_loader.load_lazy(str(output_path), request.output_format)
             schema = data_loader.get_schema(new_lf)
-            stats = data_loader.get_stats(new_lf, schema)
+            stats = data_loader.get_stats(new_lf, schema, str(output_path), request.output_format)
             
             new_dataset = Dataset(
                 name=output_name,

@@ -1,6 +1,6 @@
 # Data Expert
 
-[![CI](https://github.com/OWNER/data-expert/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/data-expert/actions/workflows/ci.yml)
+[![CI](https://github.com/power-howdy/data-expert/actions/workflows/ci.yml/badge.svg)](https://github.com/power-howdy/data-expert/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **A local-first workbench for exploring, editing, versioning and transforming datasets, from kilobytes to many
