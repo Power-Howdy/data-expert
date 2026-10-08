@@ -17,6 +17,9 @@ from app.services.manipulation import manipulation_engine
 from app.services.combine import combine_engine
 from app.services.export import export_engine
 from app.services.directory_scanner import directory_scanner
+from app.services.ai.views import view_store
+from app.services.profile_store import insights_store
+from app.api.ai_routes import router as ai_router
 from app.models.schemas import (
     Dataset, LoadDatasetRequest, ScanRequest, ScanResponse,
     PaginationParams, FilterParams, SortParams, FilterRequest, SortRequest,
@@ -54,6 +57,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(GZipMiddleware, minimum_size=1024)
+app.include_router(ai_router)
 
 
 # Dependency for dataset validation
@@ -139,6 +143,8 @@ async def unload_dataset(dataset_id: str):
     if not success:
         raise HTTPException(status_code=404, detail=f"Dataset {dataset_id} not found")
     analytics_engine.forget_profile(dataset_id)
+    insights_store.delete(dataset_id)
+    view_store.drop_dataset(dataset_id)
     return SuccessResponse(message=f"Dataset {dataset_id} unloaded")
 
 

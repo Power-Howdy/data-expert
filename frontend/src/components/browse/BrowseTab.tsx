@@ -1,6 +1,4 @@
 import * as React from "react"
-import { Filter, Loader2, Search } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { EmptyState } from "@/components/common/EmptyState"
@@ -9,18 +7,27 @@ import { useSelectedDataset } from "@/hooks/useSelectedDataset"
 import { formatNumber } from "@/lib/utils"
 import { useBrowseData } from "./useBrowseData"
 import { useDatasetColumns } from "./useDatasetColumns"
+import { useAITransform } from "./useAITransform"
 import { FilterPanel } from "./FilterPanel"
 import { BrowseFooter } from "./BrowseFooter"
 import { BrowseTable } from "./BrowseTable"
+import { BrowseActions } from "./BrowseActions"
+import { AIAssistant } from "./AIAssistant"
+import { ViewBanner } from "./ViewBanner"
+import { SaveDatasetDialog } from "./SaveDatasetDialog"
 
 export function BrowseTab() {
   const dataset = useSelectedDataset()
-  const columns = useDatasetColumns(dataset)
-  const data = useBrowseData(dataset)
+  const ai = useAITransform(dataset?.id)
+  const schema = ai.view?.schema ?? dataset?.schema
+  const columns = useDatasetColumns(schema)
+  const data = useBrowseData(dataset, ai.view)
   const [showFilters, setShowFilters] = React.useState(false)
-  const showingSearch = data.searchResults.length > 0
+  const [showAI, setShowAI] = React.useState(false)
+  const [saving, setSaving] = React.useState(false)
+  const showingSearch = !ai.view && data.searchResults.length > 0
 
-  if (!dataset) {
+  if (!dataset || !schema) {
     return (
       <EmptyState title="No dataset selected">
         Choose a folder in the sidebar, then click a file to browse its rows
@@ -28,65 +35,63 @@ export function BrowseTab() {
     )
   }
 
-  const actions = (
-    <>
-      <Button variant="sky" size="sm" onClick={data.search} disabled={data.searchLoading}>
-        {data.searchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-        Search
-      </Button>
-      <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}>
-        <Filter className="h-4 w-4" />
-        Filters ({data.filters.length})
-      </Button>
-    </>
-  )
-
   return (
     <div className="flex h-full flex-col gap-5">
       <PageHeader
         title={dataset.name}
         subtitle={`${formatNumber(dataset.row_count)} rows · ${dataset.schema.length} columns · ${dataset.format}`}
-        actions={actions}
+        actions={
+          <BrowseActions
+            onSearch={ai.view ? undefined : data.search}
+            searchLoading={data.searchLoading}
+            filterCount={data.filters.length}
+            onToggleFilters={() => setShowFilters(!showFilters)}
+            aiOpen={showAI}
+            onToggleAI={() => setShowAI(!showAI)}
+            onSave={() => setSaving(true)}
+          />
+        }
       />
-      <Input
-        placeholder="Search across rows..."
-        value={data.searchQuery}
-        onChange={(e) => data.setSearchQuery(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && data.search()}
-        className="max-w-md"
-      />
-      {showFilters && (
-        <FilterPanel
-          filters={data.filters}
-          columns={dataset.schema.map((c) => c.name)}
-          onChange={data.setFilters}
+      {!ai.view && (
+        <Input
+          placeholder="Search across rows..."
+          value={data.searchQuery}
+          onChange={(e) => data.setSearchQuery(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && data.search()}
+          className="max-w-md"
         />
       )}
+      <div className="shrink-0 space-y-5 empty:hidden">
+        {showAI && <AIAssistant ai={ai} />}
+        {ai.view && <ViewBanner view={ai.view} onDiscard={ai.discardView} />}
+        {showFilters && <FilterPanel filters={data.filters} columns={schema.map((c) => c.name)} onChange={data.setFilters} />}
+      </div>
       <Separator />
       {showingSearch && (
         <div className="-mb-3 text-xs font-extrabold uppercase tracking-wide text-muted-foreground">
           Showing {data.searchResults.length} search results
         </div>
       )}
-      <div className="min-h-0 flex-1">
+      <div className="min-h-[320px] flex-1">
         <BrowseTable
           columns={columns}
           rows={showingSearch ? data.searchResults : data.rows}
-          schema={dataset.schema}
+          schema={schema}
           loading={data.loading}
           rowOffset={showingSearch ? 0 : data.page * data.pageSize}
         />
       </div>
       {!showingSearch && (
         <BrowseFooter
-          page={data.page}
-          pageCount={data.pageCount}
-          pageSize={data.pageSize}
-          shown={data.rows.length}
-          total={data.total}
-          loading={data.loading}
-          onPageChange={data.setPage}
-          onPageSizeChange={data.changePageSize}
+          page={data.page} pageCount={data.pageCount} pageSize={data.pageSize}
+          shown={data.rows.length} total={data.total} loading={data.loading}
+          onPageChange={data.setPage} onPageSizeChange={data.changePageSize}
+        />
+      )}
+      {saving && (
+        <SaveDatasetDialog
+          dataset={dataset} view={ai.view} filters={data.filters} rowCount={data.total}
+          onClose={() => setSaving(false)} onSaved={() => setShowAI(false)}
         />
       )}
     </div>

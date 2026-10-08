@@ -4,7 +4,7 @@ import toast from "react-hot-toast"
 const API_BASE = import.meta.env.VITE_API_URL || "/api"
 
 class ApiClient {
-  private client: AxiosInstance
+  readonly client: AxiosInstance
 
   constructor() {
     this.client = axios.create({

@@ -8,7 +8,9 @@ import { BrowseTab } from "@/components/browse/BrowseTab"
 import { AnalyticsTab } from "@/components/analytics/AnalyticsTab"
 import { ExportTab } from "@/components/export/ExportTab"
 import { CombineTab } from "@/components/combine/CombineTab"
+import { AISettingsPanel } from "@/components/settings/AISettingsPanel"
 import { useUIStore } from "@/stores/useStore"
+import { useAIStore } from "@/stores/useAIStore"
 import { cn } from "@/lib/utils"
 
 const queryClient = new QueryClient({
@@ -40,16 +42,22 @@ function MainContent() {
 
 export default function App() {
   const { theme } = useUIStore()
+  const { settingsOpen, load: loadAISettings } = useAIStore()
 
   React.useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark")
   }, [theme])
+
+  React.useEffect(() => {
+    loadAISettings()
+  }, [loadAISettings])
 
   return (
     <QueryClientProvider client={queryClient}>
       <div className={cn("flex h-screen overflow-hidden font-sans", theme === "dark" && "dark")}>
         <Sidebar />
         <MainContent />
+        {settingsOpen && <AISettingsPanel />}
         <Toaster
           position="bottom-right"
           toastOptions={{

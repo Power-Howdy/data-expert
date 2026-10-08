@@ -5,6 +5,7 @@ import { DatasetProfile } from "@/types"
 import { ColumnProfileCard } from "./ColumnProfileCard"
 import { CorrelationHeatmap } from "./CorrelationHeatmap"
 import { MissingMatrix } from "./MissingMatrix"
+import { AIInsightsPanel } from "./AIInsightsPanel"
 
 interface ProfileTabsProps {
   profile: DatasetProfile
@@ -16,10 +17,11 @@ export function ProfileTabs({ profile, activeColumn, onColumnClick }: ProfileTab
   const columnNames = profile.columns.map((c) => c.name)
   return (
     <Tabs defaultValue="columns" className="flex-1">
-      <TabsList className="grid w-full grid-cols-3">
+      <TabsList className="grid w-full grid-cols-4">
         <TabsTrigger value="columns">Column Profiles ({profile.columns.length})</TabsTrigger>
         <TabsTrigger value="correlations">Correlations</TabsTrigger>
         <TabsTrigger value="missing">Missing Values</TabsTrigger>
+        <TabsTrigger value="insights">AI Insights</TabsTrigger>
       </TabsList>
       <TabsContent value="columns" className="flex-1">
         <ScrollArea className="h-full p-2">
@@ -44,6 +46,9 @@ export function ProfileTabs({ profile, activeColumn, onColumnClick }: ProfileTab
         {profile.missing_matrix
           ? <MissingMatrix matrix={profile.missing_matrix} columns={columnNames} />
           : <EmptyState>No missing value data available</EmptyState>}
+      </TabsContent>
+      <TabsContent value="insights" className="flex-1">
+        <AIInsightsPanel datasetId={profile.dataset_id} />
       </TabsContent>
     </Tabs>
   )

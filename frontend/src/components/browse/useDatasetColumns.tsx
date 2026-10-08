@@ -1,17 +1,17 @@
 import * as React from "react"
 import { ColumnDef } from "@tanstack/react-table"
-import { Dataset, RowData } from "@/types"
+import { ColumnSchema, RowData } from "@/types"
 import { CellValue } from "./CellValue"
 import { ColumnHeader } from "./ColumnHeader"
 
-export function useDatasetColumns(dataset: Dataset | undefined): ColumnDef<RowData>[] {
+export function useDatasetColumns(schema: ColumnSchema[] | undefined): ColumnDef<RowData>[] {
   return React.useMemo(() => {
-    if (!dataset) return []
-    return dataset.schema.map((col) => ({
+    if (!schema) return []
+    return schema.map((col) => ({
       id: col.name,
       accessorFn: (row: RowData) => row.data?.[col.name],
       header: () => <ColumnHeader column={col} />,
       cell: ({ getValue }) => <CellValue value={getValue()} />,
     }))
-  }, [dataset])
+  }, [schema])
 }

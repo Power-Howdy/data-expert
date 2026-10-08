@@ -2,6 +2,7 @@
 import { BarChart3, Combine, Download, Moon, PanelLeft, Sun, Table2 } from "lucide-react"
 import { useDatasetStore, useUIStore } from "@/stores/useStore"
 import { Button } from "@/components/ui/button"
+import { AISettingsButton } from "@/components/settings/AISettingsButton"
 import { cn } from "@/lib/utils"
 
 const tabs = [
@@ -49,6 +50,7 @@ export function Header() {
           ))}
         </nav>
 
+        <AISettingsButton />
         <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
           {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
         </Button>

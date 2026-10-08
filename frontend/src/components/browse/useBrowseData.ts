@@ -1,10 +1,12 @@
 import * as React from "react"
 import toast from "react-hot-toast"
 import { api } from "@/lib/api"
+import { aiApi } from "@/lib/aiApi"
 import { Dataset, RowData, SortParams } from "@/types"
+import type { DataView } from "@/types/ai"
 import { ColumnFilter } from "./filterOperators"
 
-export function useBrowseData(dataset: Dataset | undefined) {
+export function useBrowseData(dataset: Dataset | undefined, view: DataView | null = null) {
   const [rows, setRows] = React.useState<RowData[]>([])
   const [total, setTotal] = React.useState(0)
   const [loading, setLoading] = React.useState(false)
@@ -17,12 +19,22 @@ export function useBrowseData(dataset: Dataset | undefined) {
   const [searchLoading, setSearchLoading] = React.useState(false)
   const requestId = React.useRef(0)
   const datasetId = dataset?.id
+  const viewId = view?.id
+
+  const clearFilters = () => setFilters((current) => (current.length ? [] : current))
+
+  React.useEffect(() => {
+    setRows([])
+    setPage(0)
+    clearFilters()
+    setSearchResults([])
+  }, [viewId])
 
   React.useEffect(() => {
     setRows([])
     setTotal(dataset?.row_count ?? 0)
     setPage(0)
-    setFilters([])
+    clearFilters()
     setSearchQuery("")
     setSearchResults([])
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -32,7 +44,10 @@ export function useBrowseData(dataset: Dataset | undefined) {
     if (!datasetId) return
     const id = ++requestId.current
     setLoading(true)
-    api.getRows(datasetId, page * pageSize, pageSize, filters, sorts)
+    const request = viewId
+      ? aiApi.getViewRows(viewId, page * pageSize, pageSize, filters)
+      : api.getRows(datasetId, page * pageSize, pageSize, filters, sorts)
+    request
       .then((result) => {
         if (id !== requestId.current) return
         setRows(result.rows)
@@ -40,7 +55,7 @@ export function useBrowseData(dataset: Dataset | undefined) {
       })
       .catch(() => id === requestId.current && toast.error("Failed to load rows"))
       .finally(() => id === requestId.current && setLoading(false))
-  }, [datasetId, page, pageSize, filters, sorts])
+  }, [datasetId, viewId, page, pageSize, filters, sorts])
 
   const search = async () => {
     if (!dataset || !searchQuery.trim()) return
