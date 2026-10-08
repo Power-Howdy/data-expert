@@ -14,48 +14,56 @@ interface DirectoryTreeNodeProps {
 }
 
 export function DirectoryTreeNode({ node, depth = 0, onSelect, selectedPath }: DirectoryTreeNodeProps) {
-  const [expanded, setExpanded] = React.useState(depth < 2)
+  const [expanded, setExpanded] = React.useState(depth < 1)
   const [loading, setLoading] = React.useState(false)
+  const [children, setChildren] = React.useState(node.children)
 
   const loadChildren = async () => {
-    if (node.children && node.children.length > 0) return
+    if (children && children.length > 0) return
     setLoading(true)
     try {
       const tree = await api.getDirectoryTree(node.path, 1)
+      setChildren(tree.children)
       node.children = tree.children
-    } catch (error) {
-      toast.error("Failed to load directory")
+    } catch {
+      toast.error("Failed to load folder")
     } finally {
       setLoading(false)
     }
   }
 
-  const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (!node.is_directory) return onSelect?.(node)
-    setExpanded(!expanded)
-    if (expanded && (!node.children || node.children.length === 0)) loadChildren()
+  const handleClick = async () => {
+    if (!node.is_directory) {
+      onSelect?.(node)
+      return
+    }
+    const next = !expanded
+    setExpanded(next)
+    if (next) await loadChildren()
   }
 
   return (
     <div>
-      <div
+      <button
+        type="button"
         className={cn(
-          "flex items-center gap-1 px-2 py-1.5 rounded text-sm transition-colors hover:bg-accent cursor-pointer",
-          node.path === selectedPath && "bg-accent text-accent-foreground",
-          depth > 0 && "pl-6"
+          "flex w-full items-center gap-1.5 rounded-xl px-2 py-2 text-left text-sm font-bold transition-colors",
+          "hover:bg-muted",
+          node.path === selectedPath && "bg-primary/10 text-primary",
+          !node.is_directory && "hover:bg-secondary/10"
         )}
+        style={{ paddingLeft: `${8 + depth * 12}px` }}
         onClick={handleClick}
       >
-        <span className="flex items-center justify-center w-5">
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center text-muted-foreground">
           <FileIcon node={node} expanded={expanded} />
         </span>
-        <span className="truncate flex-1">{node.name}</span>
-        {node.is_directory && loading && <Loader2 className="h-3 w-3 animate-spin" />}
-      </div>
-      {expanded && node.children && (
-        <div className="overflow-hidden transition-all">
-          {node.children.map((child) => (
+        <span className="min-w-0 flex-1 truncate">{node.name}</span>
+        {node.is_directory && loading && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" />}
+      </button>
+      {expanded && children && (
+        <div>
+          {children.map((child) => (
             <DirectoryTreeNode
               key={child.path}
               node={child}

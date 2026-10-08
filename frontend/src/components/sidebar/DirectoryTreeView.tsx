@@ -1,4 +1,6 @@
+import { Database } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { EmptyState } from "@/components/common/EmptyState"
 import { DirectoryNode } from "@/types"
 import { DirectoryTreeNode } from "./DirectoryTreeNode"
 
@@ -10,17 +12,30 @@ interface DirectoryTreeViewProps {
 
 export function DirectoryTreeView({ tree, selectedPath, onSelectFile }: DirectoryTreeViewProps) {
   return (
-    <div className="flex-1 overflow-hidden">
-      <ScrollArea className="h-full p-2">
+    <div className="min-h-0 flex-1 overflow-hidden">
+      <ScrollArea className="h-full px-2 py-3">
         {tree ? (
-          <>
-            <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase">{tree.name}</div>
+          <div className="space-y-0.5">
+            <div className="mb-2 px-2 text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">
+              {tree.name}
+            </div>
             {tree.children?.map((child) => (
-              <DirectoryTreeNode key={child.path} node={child} onSelect={onSelectFile} selectedPath={selectedPath} />
+              <DirectoryTreeNode
+                key={child.path}
+                node={child}
+                onSelect={onSelectFile}
+                selectedPath={selectedPath}
+              />
             ))}
-          </>
+          </div>
         ) : (
-          <div className="text-center text-muted-foreground py-8">Enter a directory path to browse files</div>
+          <EmptyState
+            className="min-h-[180px] p-4"
+            icon={<Database className="h-8 w-8" />}
+            title="No folder yet"
+          >
+            Click Choose folder to start exploring your datasets
+          </EmptyState>
         )}
       </ScrollArea>
     </div>

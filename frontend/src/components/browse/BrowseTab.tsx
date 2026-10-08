@@ -19,30 +19,36 @@ export function BrowseTab() {
   const data = useBrowseData(dataset)
   const [showFilters, setShowFilters] = React.useState(false)
 
-  if (!dataset) return <EmptyState>Select a dataset from the sidebar to browse</EmptyState>
+  if (!dataset) {
+    return (
+      <EmptyState title="No dataset selected">
+        Choose a folder in the sidebar, then click a file to browse its rows
+      </EmptyState>
+    )
+  }
 
   const actions = (
     <>
-      <Button variant="outline" size="sm" onClick={data.search} disabled={data.searchLoading}>
-        <Search className="h-4 w-4 mr-2" />
-        {data.searchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
+      <Button variant="sky" size="sm" onClick={data.search} disabled={data.searchLoading}>
+        {data.searchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+        Search
       </Button>
       <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}>
-        <Filter className="h-4 w-4 mr-2" />
+        <Filter className="h-4 w-4" />
         Filters ({data.filters.length})
       </Button>
     </>
   )
 
   return (
-    <div className="flex h-full flex-col p-4 gap-4">
+    <div className="flex h-full flex-col gap-5">
       <PageHeader
         title={dataset.name}
         subtitle={`${formatNumber(dataset.row_count)} rows · ${dataset.schema.length} columns · ${dataset.format}`}
         actions={actions}
       />
       <Input
-        placeholder="Search..."
+        placeholder="Search across rows..."
         value={data.searchQuery}
         onChange={(e) => data.setSearchQuery(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && data.search()}
@@ -56,9 +62,9 @@ export function BrowseTab() {
         />
       )}
       <Separator />
-      <div className="flex-1 min-h-0">
+      <div className="min-h-0 flex-1">
         {data.searchQuery && data.searchResults.length > 0 && (
-          <div className="mb-2 text-sm text-muted-foreground">
+          <div className="mb-2 text-xs font-extrabold uppercase tracking-wide text-muted-foreground">
             Showing {data.searchResults.length} search results
           </div>
         )}

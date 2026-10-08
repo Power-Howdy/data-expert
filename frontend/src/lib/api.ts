@@ -19,13 +19,22 @@ class ApiClient {
       (response) => response,
       (error: AxiosError) => {
         const message = error.response?.data as any
-        toast.error(message?.detail || message?.error || error.message)
+        const detail = message?.detail || message?.error || error.message
+        const silent = (error.config as { silent?: boolean } | undefined)?.silent
+        if (!silent && detail !== "No folder selected") {
+          toast.error(detail)
+        }
         return Promise.reject(error)
       }
     )
   }
 
   // Directory & Dataset
+  async pickDirectory(): Promise<{ path: string }> {
+    const { data } = await this.client.post("/directories/pick", null, { timeout: 0 })
+    return data
+  }
+
   async getDirectoryTree(path: string, maxDepth = 3) {
     const { data } = await this.client.get("/directories/tree", {
       params: { path, max_depth: maxDepth },
@@ -42,8 +51,8 @@ class ApiClient {
     return data
   }
 
-  async listDatasets() {
-    const { data } = await this.client.get("/datasets")
+  async listDatasets(silent = false) {
+    const { data } = await this.client.get("/datasets", { silent } as object)
     return data
   }
 

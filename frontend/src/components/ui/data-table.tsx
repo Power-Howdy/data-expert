@@ -58,19 +58,21 @@ export function DataTable<TData, TValue>({
   }, [rowSelection, table, onSelectionChange])
 
   return (
-    <div className="w-full overflow-auto">
-      <table className="w-full caption-bottom text-sm">
-        <thead className="[&_tr]:border-b">
-          {table.getHeaderGroups().map((headerGroup) => (
-            <tr key={headerGroup.id} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-              {headerGroup.headers.map((header) => (
-                <DataTableHeaderCell key={header.id} header={header} />
-              ))}
-            </tr>
-          ))}
-        </thead>
-        <DataTableBody table={table} columnCount={columns.length} onRowClick={onRowClick} />
-      </table>
+    <div className="w-full overflow-hidden rounded-2xl border-2 border-border bg-card">
+      <div className="overflow-auto">
+        <table className="w-full caption-bottom text-sm">
+          <thead className="bg-muted/60 [&_tr]:border-b-2 [&_tr]:border-border">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <tr key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <DataTableHeaderCell key={header.id} header={header} />
+                ))}
+              </tr>
+            ))}
+          </thead>
+          <DataTableBody table={table} columnCount={columns.length} onRowClick={onRowClick} />
+        </table>
+      </div>
       <DataTablePagination table={table} />
     </div>
   )

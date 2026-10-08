@@ -1,44 +1,57 @@
 "use client"
-import { useUIStore } from "@/stores/useStore"
+import { BarChart3, Combine, Download, Moon, PanelLeft, Sun, Table2 } from "lucide-react"
+import { useDatasetStore, useUIStore } from "@/stores/useStore"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Sun, Moon, Settings } from "lucide-react"
+import { cn } from "@/lib/utils"
+
+const tabs = [
+  { id: "browse", label: "Browse", icon: Table2 },
+  { id: "analytics", label: "Stats", icon: BarChart3 },
+  { id: "export", label: "Export", icon: Download },
+  { id: "combine", label: "Combine", icon: Combine },
+] as const
 
 export function Header() {
   const { theme, toggleTheme, activeTab, setActiveTab } = useUIStore()
+  const { sidebarOpen, setSidebarOpen } = useDatasetStore()
 
   return (
-    <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-14 items-center px-4 gap-4">
-        <div className="flex-1 flex items-center gap-4">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 max-w-2xl hidden md:flex">
-            <TabsList className="bg-muted p-1 rounded-md">
-              <TabsTrigger value="browse">Browse</TabsTrigger>
-              <TabsTrigger value="analytics">Analytics</TabsTrigger>
-              <TabsTrigger value="export">Export</TabsTrigger>
-              <TabsTrigger value="combine">Combine</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="relative hidden sm:block">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Global search..."
-              className="pl-8 w-64"
-            />
-          </div>
-
-          <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
-            {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+    <header className="sticky top-0 z-30 border-b-2 border-border bg-card/90 backdrop-blur-md">
+      <div className="flex h-16 items-center gap-3 px-4 lg:px-6">
+        {!sidebarOpen && (
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Open sidebar"
+            className="shrink-0"
+          >
+            <PanelLeft className="h-5 w-5" />
           </Button>
+        )}
 
-          <Button variant="ghost" size="icon" aria-label="Settings">
-            <Settings className="h-4 w-4" />
-          </Button>
-        </div>
+        <nav className="flex min-w-0 flex-1 items-center gap-1">
+          {tabs.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setActiveTab(id)}
+              className={cn(
+                "duo-nav-pill inline-flex shrink-0 items-center gap-2 px-3 xl:px-4",
+                activeTab === id
+                  ? "bg-primary text-primary-foreground shadow-duo-primary"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              <span className="hidden lg:inline">{label}</span>
+            </button>
+          ))}
+        </nav>
+
+        <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
+          {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+        </Button>
       </div>
     </header>
   )

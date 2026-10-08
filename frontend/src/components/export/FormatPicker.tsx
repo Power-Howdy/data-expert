@@ -13,25 +13,28 @@ interface FormatPickerProps {
 
 export function FormatPicker({ formats, selected, onSelect }: FormatPickerProps) {
   return (
-    <SectionCard title="Output Format" icon={<Download className="h-5 w-5" />}>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+    <SectionCard title="Output Format" icon={<Download className="h-4 w-4" />}>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {formats.map((fmt) => (
           <button
             key={fmt.format}
+            type="button"
             onClick={() => onSelect(fmt.format)}
             className={cn(
-              "p-4 rounded-lg border-2 transition-all text-left",
-              selected === fmt.format ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+              "rounded-2xl border-2 p-4 text-left transition-all",
+              selected === fmt.format
+                ? "border-primary bg-primary/10 shadow-duo-primary"
+                : "border-border bg-card hover:border-primary/40 hover:bg-muted/40"
             )}
           >
-            <div className="flex items-center gap-2 mb-2">
-              {formatIcons[fmt.format]}
-              <span className="font-medium">{fmt.name}</span>
+            <div className="mb-2 flex items-center gap-2">
+              <span className="text-primary">{formatIcons[fmt.format]}</span>
+              <span className="font-extrabold">{fmt.name}</span>
             </div>
-            <p className="text-sm text-muted-foreground">{fmt.description}</p>
-            <div className="flex gap-1 mt-2">
-              {fmt.supports_compression && <Badge variant="secondary" className="text-xs">Compression</Badge>}
-              {fmt.supports_partitioning && <Badge variant="outline" className="text-xs">Partitioning</Badge>}
+            <p className="text-sm font-semibold text-muted-foreground">{fmt.description}</p>
+            <div className="mt-3 flex flex-wrap gap-1">
+              {fmt.supports_compression && <Badge variant="sky">Compression</Badge>}
+              {fmt.supports_partitioning && <Badge variant="outline">Partitioning</Badge>}
             </div>
           </button>
         ))}

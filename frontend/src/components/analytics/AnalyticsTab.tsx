@@ -1,4 +1,4 @@
-import { Loader2 } from "lucide-react"
+import { BarChart3, Loader2 } from "lucide-react"
 import { EmptyState } from "@/components/common/EmptyState"
 import { LoadingButton } from "@/components/common/LoadingButton"
 import { PageHeader } from "@/components/common/PageHeader"
@@ -13,26 +13,32 @@ export function AnalyticsTab() {
   const dataset = useSelectedDataset()
   const a = useAnalytics(dataset)
 
-  if (!dataset) return <EmptyState>Select a dataset from the sidebar to view analytics</EmptyState>
-
-  const profileButton = (
-    <LoadingButton variant="outline" onClick={a.loadProfile} loading={a.profileLoading} loadingText="Loading...">
-      {a.profile ? "Refresh Profile" : "Generate Full Profile"}
-    </LoadingButton>
-  )
+  if (!dataset) {
+    return (
+      <EmptyState icon={<BarChart3 className="h-9 w-9" />} title="Ready for stats">
+        Load a dataset to unlock overview metrics, profiles, and charts
+      </EmptyState>
+    )
+  }
 
   return (
-    <div className="flex h-full flex-col p-4 gap-4">
+    <div className="flex h-full flex-col gap-5">
       <PageHeader
         title={`${dataset.name} Analytics`}
         subtitle={`${formatNumber(dataset.row_count)} rows · ${dataset.schema.length} columns`}
-        actions={profileButton}
+        actions={
+          <LoadingButton onClick={a.loadProfile} loading={a.profileLoading} loadingText="Profiling...">
+            {a.profile ? "Refresh Profile" : "Generate Profile"}
+          </LoadingButton>
+        }
       />
       {a.loading && a.overview === null ? (
-        <div className="flex items-center justify-center h-32">
+        <div className="flex h-32 items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      ) : a.overview && <OverviewStats overview={a.overview} />}
+      ) : (
+        a.overview && <OverviewStats overview={a.overview} />
+      )}
       {a.profile && (
         <ProfileTabs profile={a.profile} activeColumn={a.activeColumn} onColumnClick={a.selectColumn} />
       )}

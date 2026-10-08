@@ -1,68 +1,60 @@
-import * as React from "react"
-import toast from "react-hot-toast"
-import { ChevronDown, ChevronRight } from "lucide-react"
+import { PanelLeftClose, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { api } from "@/lib/api"
-import { useDatasetStore } from "@/stores/useStore"
-import { DirectoryNode } from "@/types"
-import { DirectoryScanInput } from "./DirectoryScanInput"
+import { FolderPicker } from "./FolderPicker"
 import { DirectoryTreeView } from "./DirectoryTreeView"
 import { LoadedDatasetsList } from "./LoadedDatasetsList"
+import { useSidebar } from "./useSidebar"
 
 export function Sidebar() {
-  const store = useDatasetStore()
-  const [inputPath, setInputPath] = React.useState(store.currentDirectory)
-  const [loading, setLoading] = React.useState(false)
+  const { store, loading, pickFolder, scanPath, loadDataset } = useSidebar()
 
-  const handleScan = async () => {
-    if (!inputPath.trim()) return
-    setLoading(true)
-    try {
-      store.setDirectoryTree(await api.getDirectoryTree(inputPath, 3))
-      store.setCurrentDirectory(inputPath)
-    } catch (error) {
-      toast.error("Failed to scan directory")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleLoadDataset = async (file: DirectoryNode) => {
-    try {
-      toast.loading("Loading dataset...", { id: "load" })
-      const dataset = await api.loadDataset(file.path)
-      toast.success("Dataset loaded", { id: "load" })
-      store.selectDataset(dataset.id)
-    } catch (error) {
-      toast.error("Failed to load dataset", { id: "load" })
-    }
-  }
-
-  if (!store.sidebarOpen) {
-    return (
-      <Button
-        className="fixed left-2 top-2 z-50 h-10 w-10 rounded-full shadow-lg"
-        onClick={() => store.setSidebarOpen(true)}
-        aria-label="Open sidebar"
-      >
-        <ChevronRight className="h-5 w-5" />
-      </Button>
-    )
-  }
+  if (!store.sidebarOpen) return null
 
   return (
-    <div className="fixed left-0 top-0 h-full border-r bg-card flex flex-col transition-width z-40" style={{ width: store.sidebarWidth }}>
-      <div className="flex items-center justify-between p-4 border-b">
-        <h2 className="font-semibold">Data Expert</h2>
-        <Button variant="ghost" size="icon" onClick={() => store.setSidebarOpen(false)} aria-label="Close sidebar">
-          <ChevronDown className="h-4 w-4" />
+    <aside
+      className="flex h-full shrink-0 flex-col border-r-2 border-border bg-sidebar"
+      style={{ width: store.sidebarWidth }}
+    >
+      <div className="flex items-center justify-between gap-2 border-b-2 border-border px-4 py-4">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-duo-primary">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="truncate text-lg font-black leading-tight">Data Expert</h2>
+            <p className="text-[10px] font-extrabold uppercase tracking-wider text-primary">
+              Learn your data
+            </p>
+          </div>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => store.setSidebarOpen(false)}
+          aria-label="Close sidebar"
+        >
+          <PanelLeftClose className="h-5 w-5" />
         </Button>
       </div>
-      <DirectoryScanInput value={inputPath} onChange={setInputPath} onScan={handleScan} loading={loading} />
-      <DirectoryTreeView tree={store.directoryTree} selectedPath={store.currentDirectory} onSelectFile={handleLoadDataset} />
-      <Separator />
-      <LoadedDatasetsList datasets={store.datasets} selectedId={store.selectedDatasetId} onSelect={store.selectDataset} />
-    </div>
+
+      <FolderPicker
+        path={store.currentDirectory}
+        loading={loading}
+        onPick={pickFolder}
+        onRefresh={() => scanPath(store.currentDirectory)}
+      />
+
+      <DirectoryTreeView
+        tree={store.directoryTree}
+        selectedPath={store.currentDirectory}
+        onSelectFile={loadDataset}
+      />
+
+      <LoadedDatasetsList
+        datasets={store.datasets}
+        selectedId={store.selectedDatasetId}
+        onSelect={store.selectDataset}
+      />
+    </aside>
   )
 }

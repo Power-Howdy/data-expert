@@ -2,7 +2,7 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: "default" | "secondary" | "destructive" | "outline"
+  variant?: "default" | "secondary" | "destructive" | "outline" | "sky" | "gold"
 }
 
 const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
@@ -10,12 +10,13 @@ const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
     <div
       ref={ref}
       className={cn(
-        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+        "inline-flex items-center rounded-lg border-2 px-2 py-0.5 text-[11px] font-extrabold uppercase tracking-wide",
         {
-          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80": variant === "default",
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80": variant === "secondary",
-          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80": variant === "destructive",
-          "text-foreground": variant === "outline",
+          "border-primary/30 bg-primary/15 text-primary": variant === "default",
+          "border-secondary/30 bg-secondary/15 text-secondary": variant === "sky" || variant === "secondary",
+          "border-accent/40 bg-accent/20 text-accent-foreground": variant === "gold",
+          "border-destructive/30 bg-destructive/15 text-destructive": variant === "destructive",
+          "border-border bg-card text-muted-foreground": variant === "outline",
         },
         className
       )}

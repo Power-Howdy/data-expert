@@ -22,17 +22,21 @@ export function SectionCard({
   children,
 }: SectionCardProps) {
   return (
-    <Card className={className}>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className={cn("flex items-center gap-2", titleClassName)}>
-            {icon}
+    <Card className={cn("overflow-hidden", className)}>
+      <CardHeader className="border-b-2 border-border bg-muted/40">
+        <div className="flex items-center justify-between gap-3">
+          <CardTitle className={cn("flex items-center gap-2 text-base", titleClassName)}>
+            {icon && (
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/15 text-primary">
+                {icon}
+              </span>
+            )}
             {title}
           </CardTitle>
           {actions && <div className="flex gap-2">{actions}</div>}
         </div>
       </CardHeader>
-      <CardContent className={contentClassName}>{children}</CardContent>
+      <CardContent className={cn("pt-5", contentClassName)}>{children}</CardContent>
     </Card>
   )
 }

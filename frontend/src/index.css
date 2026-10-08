@@ -4,48 +4,61 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Duolingo-inspired palette */
+    --background: 120 20% 97%;
+    --foreground: 0 0% 24%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 0 0% 24%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    --popover-foreground: 0 0% 24%;
+    --primary: 86 98% 40%;
+    --primary-foreground: 0 0% 100%;
+    --primary-shadow: 86 98% 30%;
+    --secondary: 199 93% 54%;
+    --secondary-foreground: 0 0% 100%;
+    --secondary-shadow: 199 84% 42%;
+    --muted: 120 12% 93%;
+    --muted-foreground: 0 0% 47%;
+    --accent: 46 100% 50%;
+    --accent-foreground: 0 0% 24%;
+    --destructive: 0 100% 65%;
+    --destructive-foreground: 0 0% 100%;
+    --destructive-shadow: 0 80% 50%;
+    --border: 0 0% 88%;
+    --input: 0 0% 88%;
+    --ring: 86 98% 40%;
+    --radius: 1rem;
+    --duo-feather: 270 100% 75%;
+    --surface: 0 0% 100%;
+    --sidebar: 0 0% 100%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --background: 160 15% 10%;
+    --foreground: 0 0% 95%;
+    --card: 160 12% 14%;
+    --card-foreground: 0 0% 95%;
+    --popover: 160 12% 14%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 86 90% 45%;
+    --primary-foreground: 0 0% 8%;
+    --primary-shadow: 86 90% 32%;
+    --secondary: 199 85% 50%;
+    --secondary-foreground: 0 0% 100%;
+    --secondary-shadow: 199 85% 38%;
+    --muted: 160 10% 18%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 46 95% 48%;
+    --accent-foreground: 0 0% 10%;
+    --destructive: 0 85% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --destructive-shadow: 0 70% 40%;
+    --border: 160 10% 22%;
+    --input: 160 10% 22%;
+    --ring: 86 90% 45%;
+    --duo-feather: 270 80% 70%;
+    --surface: 160 12% 14%;
+    --sidebar: 160 14% 12%;
   }
 }
 
@@ -53,15 +66,55 @@
   * {
     @apply border-border;
   }
+
+  html {
+    @apply scroll-smooth;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 10% -10%, hsla(86, 98%, 40%, 0.08), transparent),
+      radial-gradient(ellipse 60% 40% at 100% 0%, hsla(199, 93%, 54%, 0.07), transparent),
+      radial-gradient(ellipse 50% 30% at 50% 100%, hsla(46, 100%, 50%, 0.05), transparent);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-display tracking-tight;
+  }
+}
+
+@layer components {
+  .duo-press {
+    box-shadow: 0 4px 0 0 hsl(var(--primary-shadow));
+    transition: transform 80ms ease, box-shadow 80ms ease;
+  }
+
+  .duo-press:hover:not(:disabled) {
+    filter: brightness(1.05);
+  }
+
+  .duo-press:active:not(:disabled) {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 0 hsl(var(--primary-shadow));
+  }
+
+  .duo-card {
+    @apply rounded-2xl border-2 bg-card shadow-sm;
+    border-color: hsl(var(--border));
+  }
+
+  .duo-nav-pill {
+    @apply rounded-xl px-4 py-2.5 text-sm font-bold uppercase tracking-wide transition-all;
   }
 }
 
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--muted-foreground)) transparent;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.4) transparent;
   }
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
@@ -71,7 +124,7 @@
     background: transparent;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: hsl(var(--muted-foreground));
-    border-radius: 3px;
+    background-color: hsl(var(--muted-foreground) / 0.35);
+    border-radius: 999px;
   }
 }

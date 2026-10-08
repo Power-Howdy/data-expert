@@ -64,6 +64,31 @@ def get_dataset(dataset_id: str) -> Dataset:
 
 # ==================== Directory & Dataset Management ====================
 
+@app.post("/api/directories/pick")
+async def pick_directory():
+    """Open a native OS folder picker and return the selected path."""
+    def _pick() -> Optional[str]:
+        try:
+            import tkinter as tk
+            from tkinter import filedialog
+            root = tk.Tk()
+            root.withdraw()
+            root.attributes("-topmost", True)
+            path = filedialog.askdirectory(title="Select data folder")
+            root.destroy()
+            return path or None
+        except Exception as e:
+            raise RuntimeError(f"Folder picker unavailable: {e}") from e
+
+    try:
+        path = await asyncio.to_thread(_pick)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    if not path:
+        raise HTTPException(status_code=400, detail="No folder selected")
+    return {"path": path}
+
+
 @app.get("/api/directories/tree")
 async def get_directory_tree(path: str = Query(...), max_depth: int = Query(3)):
     """Get directory tree for sidebar."""
