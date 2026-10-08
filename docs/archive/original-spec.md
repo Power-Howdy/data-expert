@@ -1,5 +1,8 @@
 # Data Expert System - Technical Specification
 
+> **Archived.** This is the original design specification, kept for reference. It does not describe the
+> current implementation. See [docs/README.md](../README.md) for up-to-date documentation.
+
 ## Architecture Overview
 
 ```

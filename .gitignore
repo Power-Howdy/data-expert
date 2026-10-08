@@ -5,6 +5,7 @@ __pycache__/
 *.so
 .Python
 venv/
+.venv/
 env/
 ENV/
 .pytest_cache/
@@ -18,8 +19,9 @@ node_modules/
 dist/
 build/
 *.local
+*.tsbuildinfo
 
-# Environment
+# Environment (frontend/.env.development is committed on purpose: it holds no secrets)
 .env
 .env.local
 .env.*.local
@@ -33,20 +35,29 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Data
-*.parquet
-*.csv
-*.json
-*.jsonl
-*.feather
-*.avro
-*.orc
-*.xlsx
-*.xls
+# Application state: registry, AI settings (may contain API keys), profiles, search indexes, function library
+.data_expert/
+# Version history written next to data files
+.data-expert-history/
 data_expert_outputs/
 data_expert_exports/
-.data_expert/
+*.dx-tmp*
+
+# User data. Keep datasets out of the repository; config files such as package.json stay tracked.
+/data/
+*.parquet
+*.feather
+*.arrow
+*.avro
+*.orc
+*.csv
+*.tsv
+*.jsonl
+*.json.gz
+*.xlsx
+*.xls
 
 # Logs
 *.log
@@ -54,5 +65,6 @@ data_expert_exports/
 # Docker
 docker-compose.override.yml
 
-
-tmp
+# Scratch
+tmp/
+/package-lock.json
