@@ -1,24 +1,12 @@
 "use client"
-import * as React from "react"
 import { useUIStore } from "@/stores/useStore"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Separator } from "@/components/ui/separator"
-import { Search, Sun, Moon, Settings, Download, Plus } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { DataTable } from "@/components/ui/data-table"
-import { useDatasetStore } from "@/stores/useStore"
-import { api } from "@/lib/api"
-import { ColumnDef } from "@tanstack/react-table"
-import { RowData, Dataset } from "@/types"
-import toast from "react-hot-toast"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Search, Sun, Moon, Settings } from "lucide-react"
 
 export function Header() {
-  const { theme, toggleTheme, activeTab, setActiveTab, notifications, removeNotification } = useUIStore()
-  const { selectedDatasetId, datasets } = useDatasetStore()
-  
-  const dataset = datasets.find(d => d.id === selectedDatasetId)
+  const { theme, toggleTheme, activeTab, setActiveTab } = useUIStore()
 
   return (
     <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">

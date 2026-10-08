@@ -2,7 +2,7 @@
 import * as React from "react"
 import { useDatasetStore } from "@/stores/useStore"
 import { api } from "@/lib/api"
-import { ColumnDef, flexRender } from "@tanstack/react-table"
+import { ColumnDef } from "@tanstack/react-table"
 import { DataTable } from "@/components/ui/data-table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,10 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Loader2, Search, Filter, ChevronDown, ChevronUp, Download, Plus, Trash2, Edit2 } from "lucide-react"
-import { cn, formatNumber } from "@/lib/utils"
-import { Dataset, ColumnSchema, RowData, FilterParams, SortParams } from "@/types"
+import { Loader2, Search, Filter, Plus, Trash2 } from "lucide-react"
+import { formatNumber } from "@/lib/utils"
+import { RowData, SortParams } from "@/types"
 import toast from "react-hot-toast"
 
 interface ColumnFilter {
@@ -43,11 +42,11 @@ export function BrowseTab() {
 
   const [rows, setRows] = React.useState<RowData[]>([])
   const [total, setTotal] = React.useState(0)
-  const [loading, setLoading] = React.useState(false)
+  const [_loading, setLoading] = React.useState(false)
   const [page, setPage] = React.useState(0)
   const [pageSize, setPageSize] = React.useState(100)
   const [filters, setFilters] = React.useState<ColumnFilter[]>([])
-  const [sorts, setSorts] = React.useState<SortParams[]>([])
+  const [sorts] = React.useState<SortParams[]>([])
   const [showFilters, setShowFilters] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState("")
   const [searchResults, setSearchResults] = React.useState<RowData[]>([])
@@ -100,7 +99,7 @@ export function BrowseTab() {
     setSearchLoading(true)
     try {
       const result = await api.search(dataset.id, searchQuery, { limit: 100 })
-      setSearchResults(result.results.map(r => ({ id: r.row_id, data: r.data })))
+      setSearchResults(result.results.map((r: { row_id: string; data: Record<string, any> }) => ({ id: r.row_id, data: r.data })))
       setPage(0)
     } catch (error) {
       toast.error("Search failed")
@@ -136,7 +135,7 @@ export function BrowseTab() {
         <div>
           <h1 className="text-2xl font-bold">{dataset.name}</h1>
           <p className="text-muted-foreground">
-            {formatNumber(dataset.row_count)} rows · {dataset.column_count} columns · {dataset.format}
+            {formatNumber(dataset.row_count)} rows · {dataset.schema.length} columns · {dataset.format}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -233,7 +232,7 @@ export function BrowseTab() {
           Showing {rows.length} of {formatNumber(total)} rows
         </div>
         <div className="flex items-center gap-2">
-          <Select value={pageSize} onValueChange={(v) => { setPageSize(Number(v)); setPage(0); }}>
+          <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(0); }}>
             <SelectTrigger className="w-36">
               <SelectValue />
             </SelectTrigger>

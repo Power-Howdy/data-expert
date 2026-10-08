@@ -12,11 +12,11 @@ import {
   ColumnFiltersState,
   VisibilityState,
   PaginationState,
+  RowSelectionState,
 } from "@tanstack/react-table"
 import { cn } from "@/lib/utils"
 import { ChevronUp, ChevronDown, ChevronsUpDown, MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 interface DataTableProps<TData, TValue> {
@@ -34,8 +34,6 @@ export function DataTable<TData, TValue>({
   data,
   pageSize = 50,
   onRowClick,
-  selectable = false,
-  selectedRows = [],
   onSelectionChange,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
@@ -45,7 +43,7 @@ export function DataTable<TData, TValue>({
     pageIndex: 0,
     pageSize,
   })
-  const [rowSelection, setRowSelection] = React.useState({})
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
 
   const table = useReactTable({
     data,
@@ -112,7 +110,6 @@ export function DataTable<TData, TValue>({
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
                         onSelect={header.column.getToggleVisibilityHandler()}
-                        checked={header.column.getIsVisible()}
                       >
                         {header.column.getIsVisible() ? "Hide" : "Show"} Column
                       </DropdownMenuItem>
@@ -125,7 +122,7 @@ export function DataTable<TData, TValue>({
         </thead>
         <tbody className="[&_tr:last-child]:border-0">
           {table.getRowModel().rows.length ? (
-            table.getRowModel().rows.map((row, i) => (
+            table.getRowModel().rows.map((row) => (
               <tr
                 key={row.id}
                 className={cn(

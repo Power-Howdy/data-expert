@@ -1,6 +1,6 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
-import type { Dataset, DirectoryNode, DataFormat } from "@/types"
+import type { Dataset, DirectoryNode } from "@/types"
 
 interface DatasetState {
   datasets: Dataset[]

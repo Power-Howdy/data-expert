@@ -10,9 +10,10 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Loader2, Download, FileText, Database, FileSpreadsheet, FileCode, Settings, ChevronDown } from "lucide-react"
+import { Loader2, Download, FileText, Database, FileSpreadsheet, FileCode, Settings } from "lucide-react"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn, formatNumber } from "@/lib/utils"
-import { Dataset, DataFormat, ExportRequest, ColumnSchema } from "@/types"
+import { DataFormat, ExportRequest } from "@/types"
 import toast from "react-hot-toast"
 
 const formatIcons: Record<DataFormat, React.ReactNode> = {
@@ -27,20 +28,6 @@ const formatIcons: Record<DataFormat, React.ReactNode> = {
   "json.gz": <FileCode className="h-4 w-4" />,
   xlsx: <FileSpreadsheet className="h-4 w-4" />,
   xls: <FileSpreadsheet className="h-4 w-4" />,
-}
-
-const formatDescriptions: Record<DataFormat, string> = {
-  parquet: "Columnar format, efficient for analytics",
-  csv: "Comma-separated values, universal compatibility",
-  tsv: "Tab-separated values",
-  json: "JavaScript Object Notation",
-  jsonl: "Newline-delimited JSON, streaming friendly",
-  feather: "Fast, lightweight columnar format",
-  avro: "Row-based format with schema",
-  orc: "Optimized row columnar format",
-  "json.gz": "Compressed JSON Lines",
-  xlsx: "Excel spreadsheet",
-  xls: "Legacy Excel format",
 }
 
 export function ExportTab() {
@@ -153,8 +140,6 @@ export function ExportTab() {
     }
   }
 
-  const currentFormat = formats.find(f => f.format === selectedFormat)
-
   if (!dataset) {
     return (
       <div className="flex h-full items-center justify-center text-muted-foreground">
@@ -169,7 +154,7 @@ export function ExportTab() {
         <div>
           <h1 className="text-2xl font-bold">{dataset.name} Export</h1>
           <p className="text-muted-foreground">
-            {formatNumber(dataset.row_count)} rows · {dataset.column_count} columns
+            {formatNumber(dataset.row_count)} rows · {dataset.schema.length} columns
           </p>
         </div>
       </div>

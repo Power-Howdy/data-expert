@@ -8,13 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Plus, Minus, ArrowRight, Database, Loader2, Search, ChevronDown, Settings, Download } from "lucide-react"
+import { Plus, Minus, ArrowRight, Database, Loader2, Search, Settings, Download } from "lucide-react"
 import { cn, formatNumber } from "@/lib/utils"
 import { Dataset, DataFormat, CombineRequest, SeparateRequest } from "@/types"
 import { DataTable } from "@/components/ui/data-table"
-import { ColumnDef } from "@tanstack/react-table"
 import toast from "react-hot-toast"
 
 const combineStrategies = [
@@ -31,7 +29,7 @@ const joinTypes = [
 ]
 
 export function CombineTab() {
-  const { datasets, selectedDatasetId } = useDatasetStore()
+  const { datasets } = useDatasetStore()
 
   const [activeTab, setActiveTab] = React.useState<"combine" | "separate">("combine")
   const [selectedDatasets, setSelectedDatasets] = React.useState<string[]>([])
@@ -93,7 +91,11 @@ export function CombineTab() {
     if (selectedDatasets.length < 2) return
     setLoading(true)
     try {
-      const result = await api.previewCombine(selectedDatasets, strategy, strategy !== "concat" ? joinConfig : undefined)
+      const result = await api.previewCombine({
+        dataset_ids: selectedDatasets,
+        strategy,
+        join_config: strategy !== "concat" ? joinConfig : undefined,
+      })
       setPreview(result.preview)
       setPreviewColumns(Object.keys(result.preview[0] || {}))
     } catch (error) {
@@ -141,7 +143,7 @@ export function CombineTab() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "combine" | "separate")} className="flex-1">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="combine">Combine Datasets</TabsTrigger>
           <TabsTrigger value="separate">Separate Dataset</TabsTrigger>
@@ -181,7 +183,7 @@ export function CombineTab() {
                           <div>
                             <p className="font-medium">{dataset.name}</p>
                             <p className="text-sm text-muted-foreground">
-                              {formatNumber(dataset.row_count)} rows · {dataset.column_count} cols · {dataset.format}
+                              {formatNumber(dataset.row_count)} rows · {dataset.schema.length} cols · {dataset.format}
                             </p>
                           </div>
                         </div>
@@ -204,7 +206,7 @@ export function CombineTab() {
                 <CardContent className="space-y-4">
                   <div>
                     <label className="text-sm font-medium block mb-2">Strategy</label>
-                    <Select value={strategy} onValueChange={setStrategy}>
+                    <Select value={strategy} onValueChange={(v) => setStrategy(v as "concat" | "join" | "merge")}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -231,7 +233,7 @@ export function CombineTab() {
                             <SelectValue placeholder="Select column" />
                           </SelectTrigger>
                           <SelectContent>
-                            {getCommonColumns().map((col) => (
+                            {getCommonColumns(datasets, selectedDatasets).map((col) => (
                               <SelectItem key={col} value={col}>{col}</SelectItem>
                             ))}
                           </SelectContent>
@@ -247,7 +249,7 @@ export function CombineTab() {
                             <SelectValue placeholder="Select column" />
                           </SelectTrigger>
                           <SelectContent>
-                            {getCommonColumns().map((col) => (
+                            {getCommonColumns(datasets, selectedDatasets).map((col) => (
                               <SelectItem key={col} value={col}>{col}</SelectItem>
                             ))}
                           </SelectContent>
@@ -294,7 +296,7 @@ export function CombineTab() {
                   </div>
                   <div>
                     <label className="text-sm font-medium block mb-2">Output Format</label>
-                    <Select value={outputFormat} onValueChange={setOutputFormat}>
+                    <Select value={outputFormat} onValueChange={(v) => setOutputFormat(v as DataFormat)}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -392,7 +394,7 @@ export function CombineTab() {
 
                 <div>
                   <label className="text-sm font-medium block mb-2">Output Format</label>
-                  <Select value={separateOutputFormat} onValueChange={setSeparateOutputFormat}>
+                  <Select value={separateOutputFormat} onValueChange={(v) => setSeparateOutputFormat(v as DataFormat)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -448,8 +450,7 @@ export function CombineTab() {
   )
 }
 
-function getCommonColumns() {
-  const { datasets, selectedDatasets } = useDatasetStore.getState()
+function getCommonColumns(datasets: Dataset[], selectedDatasets: string[]) {
   if (selectedDatasets.length < 2) return []
   
   const selected = datasets.filter(d => selectedDatasets.includes(d.id))

@@ -2,14 +2,14 @@
 import * as React from "react"
 import { useDatasetStore } from "@/stores/useStore"
 import { api } from "@/lib/api"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Loader2, Database, BarChart, TrendingUp, AlertTriangle } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Loader2, Database, BarChart, TrendingUp, AlertTriangle, X } from "lucide-react"
 import { cn, formatNumber, formatPercent, formatBytes } from "@/lib/utils"
-import { Dataset, DatasetProfile, ColumnProfile, AnalyticsOverview } from "@/types"
+import { DatasetProfile, ColumnProfile, AnalyticsOverview } from "@/types"
 import {
   BarChart as RechartsBarChart,
   Bar,
@@ -18,15 +18,8 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
 } from "recharts"
 import toast from "react-hot-toast"
-
-const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4", "#84cc16"]
 
 export function AnalyticsTab() {
   const { selectedDatasetId, datasets } = useDatasetStore()
@@ -111,7 +104,7 @@ export function AnalyticsTab() {
         <div>
           <h1 className="text-2xl font-bold">{dataset.name} Analytics</h1>
           <p className="text-muted-foreground">
-            {formatNumber(dataset.row_count)} rows · {dataset.column_count} columns
+            {formatNumber(dataset.row_count)} rows · {dataset.schema.length} columns
           </p>
         </div>
         <Button variant="outline" onClick={loadProfile} disabled={profileLoading}>
@@ -127,7 +120,7 @@ export function AnalyticsTab() {
       ) : overview && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard title="Total Rows" value={formatNumber(overview.row_count)} icon={<Database className="h-5 w-5" />} />
-          <StatCard title="Columns" value={overview.column_count} icon={<BarChart className="h-5 w-5" />} />
+          <StatCard title="Columns" value={String(overview.column_count)} icon={<BarChart className="h-5 w-5" />} />
           <StatCard title="Memory" value={formatBytes(overview.memory_bytes)} icon={<TrendingUp className="h-5 w-5" />} />
           <StatCard title="Missing %" value={formatPercent(overview.missing_percentage)} icon={<AlertTriangle className="h-5 w-5" />} />
         </div>
@@ -242,7 +235,7 @@ function ColumnProfileCard({ column, onClick, active }: { column: ColumnProfile;
             <ResponsiveContainer width="100%" height="100%">
               <RechartsBarChart data={column.histogram.bins.map((count: number, i: number) => ({
                 count,
-                range: `${column.histogram.bin_edges[i].toFixed(1)}-${column.histogram.bin_edges[i+1]?.toFixed(1) || ''}`
+                range: `${column.histogram!.bin_edges[i].toFixed(1)}-${column.histogram!.bin_edges[i+1]?.toFixed(1) || ''}`
               }))}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                 <XAxis dataKey="range" tick={{ fontSize: 10 }} />
@@ -293,11 +286,11 @@ function CorrelationHeatmap({ correlations, columns }: { correlations: Record<st
             </tr>
           </thead>
           <tbody>
-            {data.map((row, i) => (
+            {data.map((row) => (
               <tr key={row.column}>
                 <td className="sticky left-0 p-2 bg-background border border-border font-medium">{row.column}</td>
                 {columns.map(col => {
-                  const value = row[col]
+                  const value = row[col as keyof typeof row] as unknown as number
                   const intensity = Math.abs(value)
                   const bgColor = value > 0 
                     ? `rgba(59, 130, 246, ${intensity * 0.5})` 
@@ -367,9 +360,9 @@ function ColumnDetailPanel({ column, distribution, outliers, onClose }: {
       <div className="relative w-full max-w-2xl bg-card border-l h-full flex flex-col">
         <div className="flex items-center justify-between p-4 border-b">
           <h3 className="font-semibold">Column Details: {column}</h3>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <span className="text-2xl">×</span>
-          </Button>
+          <button onClick={onClose} className="p-1 hover:bg-accent rounded">
+            <X className="h-5 w-5" />
+          </button>
         </div>
         <ScrollArea className="flex-1 p-4 space-y-6">
           <div>

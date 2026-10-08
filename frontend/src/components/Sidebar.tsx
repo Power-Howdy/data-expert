@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
-import { ChevronRight, ChevronDown, Folder, File, Database, RefreshCw, Loader2 } from "lucide-react"
+import { ChevronRight, ChevronDown, File, Database, RefreshCw, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import toast from "react-hot-toast"
 
