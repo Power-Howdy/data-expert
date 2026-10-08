@@ -1,0 +1,7 @@
+venv
+.venv
+__pycache__
+.pytest_cache
+.data_expert
+data_expert_exports
+data_expert_outputs

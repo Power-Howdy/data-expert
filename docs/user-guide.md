@@ -149,7 +149,8 @@ The **Export** tab writes the selected dataset in another format.
 1. Pick a format.
 2. Choose the columns to include.
 3. Set compression and, for Parquet, a partition column.
-4. **Export to file** writes the file on the backend machine; **Stream download** sends it to your browser.
+4. **Export to file** writes the file on the backend machine: to the output path you enter, or by default to
+   `backend/data_expert_exports/`. **Stream download** sends it to your browser instead.
 
 Recent exports are listed under **Export history**.
 
@@ -163,7 +164,8 @@ The **Combine** tab works with several loaded datasets.
 - **Preview** shows the first rows of the result before writing it.
 - **Separate** splits one dataset into several files by the values of a column.
 
-Results are written as new files and loaded automatically.
+Results are written as new files and loaded automatically. Combined datasets go to `backend/data_expert_outputs/`;
+separated files go to the output folder you choose.
 
 ## Privacy
 

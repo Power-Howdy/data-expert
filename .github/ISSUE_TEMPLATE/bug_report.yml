@@ -1,0 +1,61 @@
+name: Bug report
+description: Something does not work as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please do not attach private data. Security issues go through private reporting (see SECURITY.md).
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Load a 2 GB Parquet file
+        2. Open the History tab
+        3. Click Restore on the first version
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Loading / folder tree
+        - Browse / filters
+        - Search
+        - Editing / saving
+        - Version history
+        - AI assistant / insights
+        - Stats
+        - Export
+        - Combine / separate
+        - Installation / setup
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: dataset
+    attributes:
+      label: Dataset format and approximate size
+      placeholder: "Parquet, 3.2 GB, 1M rows, nested columns"
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: "Windows 11, Python 3.14.0, Node 24.1, Chrome 140, commit abc1234"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Backend console output and/or browser console errors.
+      render: text

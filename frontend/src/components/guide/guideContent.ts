@@ -92,7 +92,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     intro: "The Export tab writes the selected dataset to another format.",
     points: [
       "Pick a format, the columns to include, compression and, for Parquet, partition columns.",
-      "Export to file writes next to the data; Stream download sends it straight to your browser.",
+      "Export to file writes to the output path you enter (by default the backend's data_expert_exports folder); Stream download sends it straight to your browser.",
     ],
   },
   {
