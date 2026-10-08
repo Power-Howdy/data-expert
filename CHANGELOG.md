@@ -26,6 +26,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- The search index for large files is now about 1/200 of the file instead of several times its size: 13 MB
+  instead of 14.8 GB for a 3 GB, 1M-row Parquet file, built in about 70 s. It stores per-block n-gram
+  fingerprints and scans only the blocks that can match, so results are exactly those of a full scan (substring,
+  case-insensitive). Searches take 0.02 s (no match) to about 10 s (rare word combinations), versus 47 s for a full
+  scan. Large-file results are no longer ranked or fuzzy-matched, the `search/suggest` endpoint was removed, and
+  responses include `total_exact`. Tantivy is no longer a dependency; old indexes are deleted at startup.
 - Much faster opening and browsing of large files. Opening a file reads only metadata: 0.07 s, down from
   14.8 s, for a 3 GB, 1M-row Parquet file. Row pages come from a window cache with a streaming Parquet reader, so
   first pages, next pages and opening a row take under 0.1 s, down from 2–4 s. Saving a version no longer rescans

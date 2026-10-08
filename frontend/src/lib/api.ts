@@ -122,13 +122,6 @@ class ApiClient {
     return data
   }
 
-  async getSuggestions(id: string, prefix: string, limit = 10) {
-    const { data } = await this.client.get(`/datasets/${id}/search/suggest`, {
-      params: { q: prefix, limit },
-    })
-    return data
-  }
-
   async buildSearchIndex(id: string) {
     const { data } = await this.client.post(`/datasets/${id}/search/index`)
     return data

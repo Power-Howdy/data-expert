@@ -73,7 +73,7 @@ export function BrowseTab() {
       <Separator />
       {showingSearch && (
         <SearchStatus
-          query={search.searched ?? ""} shown={search.results.length} total={search.total}
+          query={search.searched ?? ""} shown={search.results.length} total={search.total} totalExact={search.totalExact}
           indexing={search.indexing} onClear={search.clear}
         />
       )}

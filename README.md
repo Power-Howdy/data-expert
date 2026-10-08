@@ -13,8 +13,8 @@ plain-language requests into transformations, without ever sending your data to 
 - **Huge files, fast.** Polars reads lazily: opening a multi-gigabyte Parquet file reads its metadata, and each
   page reads only the rows it shows.
 - **Search everything.** Search every column, including nested values. Small files are scanned live, with your
-  unsaved edits; large files get a background full-text index ([Tantivy](https://github.com/quickwit-oss/tantivy))
-  with live progress.
+  unsaved edits; large files get a compact background index (about 1/200 of the file) that narrows each search to the
+  parts of the file that can match.
 - **Safe editing.** Edit rows as a form or JSON, add and delete rows, and find & replace (exact, contains, regex).
   Changes stay pending, with undo, until you save; saves are atomic.
 - **Git-like version history for data.** Every save is a commit. Row edits are stored as reverse deltas of a few
@@ -76,7 +76,7 @@ Full instructions: [docs/getting-started.md](docs/getting-started.md).
 |---------|----------|
 | FastAPI, Pydantic v2 | React 18, TypeScript, Vite |
 | Polars, PyArrow | Tailwind CSS, Radix UI |
-| Tantivy (full-text search) | zustand, TanStack Query/Table |
+| NumPy (search index) | zustand, TanStack Query/Table |
 | httpx (OpenAI-compatible LLM APIs) | Recharts, CodeMirror 6 |
 
 ## Project structure

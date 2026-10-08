@@ -72,9 +72,11 @@ use **Clear search** to return to all rows.
 
 - Search ignores upper and lower case and looks inside nested values.
 - Files under 256 MB are scanned directly, and the results include your unsaved edits.
-- Larger files are searched through an index that is built once, in the background, on the first search. The
-  ring in the sidebar shows progress, and results appear automatically when the index is ready.
-- If nothing matches exactly, close spellings (one typo) are tried.
+- Larger files are searched through a small index (about 1/200 of the file) that is built once, in the
+  background, on the first search. The ring in the sidebar shows progress, and results appear automatically when
+  the index is ready. Matching is the same as for small files (any part of a value, ignoring case).
+- On large files, a count such as “1,234+” means counting stopped early to keep the search fast; there are at
+  least that many matches. A browse copy (**Optimize for browsing**) also makes searches in that file faster.
 - Click **Clear search** to return to all rows.
 
 How this works: [Search](search.md).

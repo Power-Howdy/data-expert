@@ -125,6 +125,8 @@ export interface BrowseCopyStatus {
 export interface SearchResponse {
   results: SearchResult[]
   total: number
+  /** False when counting stopped early on a large file; `total` is then a lower bound. */
+  total_exact: boolean
   took_ms: number
   mode: "scan" | "index"
   /** Set for large files, which are searched through an index. */

@@ -41,8 +41,8 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     points: [
       "Search looks in every column, including text inside nested values, and ignores upper/lower case.",
       "Small files are searched directly and include your unsaved edits.",
-      "Large files (over 256 MB) need a search index, built once in the background on the first search. A ring next to the dataset in the sidebar shows its progress, and results appear automatically.",
-      "If nothing matches exactly, close spellings are tried (for example a single typo).",
+      "Large files (over 256 MB) need a small search index (about 1/200 of the file), built once in the background on the first search. A ring next to the dataset in the sidebar shows its progress, and results appear automatically.",
+      "On large files, a count like “1,234+” means counting stopped early to keep search fast; there are at least that many matches. Optimize for browsing also makes searches in that file faster.",
       "Click Clear search to go back to all rows.",
     ],
   },

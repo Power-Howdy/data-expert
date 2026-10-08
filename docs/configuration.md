@@ -32,7 +32,7 @@ performance:
   max_memory_usage_mb: 2048
 
 search:
-  engine: "tantivy"
+  engine: "blocks"
   index_path: "./.data_expert/search_indexes"
   max_results: 1000        # upper bound for a search page
   highlight: true

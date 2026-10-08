@@ -45,24 +45,57 @@ def test_scan_matches_all_terms_nested_values_and_pending_edits(setup):
         search.search(ds.id, SearchRequest(query="  "))
 
 
-def test_large_files_use_a_background_index(setup, monkeypatch):
-    ds, search = setup
+@pytest.fixture()
+def indexed(monkeypatch):
     monkeypatch.setattr(search_module, "SCAN_LIMIT_BYTES", 0)
+    monkeypatch.setattr(search_module, "MIN_BLOCK_ROWS", 10)
+    monkeypatch.setattr(search_module, "DATA_PER_FINGERPRINT", 0)
+
+
+def wait_ready(search, dataset_id):
+    for _ in range(200):
+        if search.status(dataset_id).state == "ready":
+            return
+        time.sleep(0.05)
+    raise TimeoutError("index was not built")
+
+
+def test_large_files_use_a_background_index(setup, indexed):
+    ds, search = setup
     first = search.search(ds.id, SearchRequest(query="photosynthesis"))
     assert first.mode == "index" and first.index.state in ("building", "ready")
-    for _ in range(100):
-        if search.status(ds.id).state == "ready":
-            break
-        time.sleep(0.05)
-    assert search.status(ds.id).state == "ready"
+    wait_ready(search, ds.id)
 
     found = search.search(ds.id, SearchRequest(query="photosynthesis"))
-    assert ids(found) == ["0"] and found.results[0].data["meta"] == {"topic": "plants"}
-    assert ids(search.search(ds.id, SearchRequest(query="photosyntesis"))) == ["0"]
+    assert ids(found) == ["0"] and found.results[0].data["meta"] == {"topic": "plants"} and found.total_exact
+    assert ids(search.search(ds.id, SearchRequest(query="SYNTH"))) == ["0"]
+    assert ids(search.search(ds.id, SearchRequest(query="plants growth"))) == ["2"]
     engine.update_row(ds.id, "2", {"views": 99})
+    engine.update_row(ds.id, "1", {"title": "Plant cells"})
     engine.delete_row(ds.id, "0")
-    assert {r.row_id: r.data["views"] for r in search.search(ds.id, SearchRequest(query="plants")).results} == {"2": 99}
-    assert "photosynthesis" in search.suggest(ds.id, "photo")
+    found = search.search(ds.id, SearchRequest(query="plant"))
+    assert {r.row_id: r.data["views"] for r in found.results} == {"1": 20, "2": 99}
 
     search.delete_index(ds.id)
     assert search.status(ds.id).state == "missing"
+
+
+def test_index_scans_only_blocks_that_can_match(tmp_path, setup, indexed, monkeypatch):
+    _, search = setup
+    path = tmp_path / "many.csv"
+    words = ["needle in the haystack" if i in (37, 81) else f"plain row number {i}" for i in range(100)]
+    pl.DataFrame({"n": list(range(100)), "text": words}).write_csv(path)
+    ds = dataset_manager.load_dataset(LoadDatasetRequest(path=str(path)))
+    search.build_index(ds.id)
+    wait_ready(search, ds.id)
+    meta, blocks = search.candidate_blocks(ds.id, search._key(ds.path), ["Needle", "hay"])
+    assert meta["blocks"] == 10 and blocks == [3, 8]
+    assert search.status(ds.id).size_bytes < 10 * search_module.BLOCK_BITS // 8 + 1000
+
+    found = search.search(ds.id, SearchRequest(query="needle"))
+    assert ids(found) == ["37", "81"] and found.total == 2 and found.total_exact
+    assert found.results[1].data == {"n": 81, "text": "needle in the haystack"}
+
+    monkeypatch.setattr(search_module, "COUNT_BUDGET_S", -1)
+    partial = search.search(ds.id, SearchRequest(query="plain row", limit=5))
+    assert ids(partial) == ["0", "1", "2", "3", "4"] and not partial.total_exact and partial.total >= 5

@@ -12,6 +12,7 @@ export function useSearch(datasetId: string | undefined) {
   const [query, setQuery] = React.useState("")
   const [results, setResults] = React.useState<RowData[]>([])
   const [total, setTotal] = React.useState(0)
+  const [totalExact, setTotalExact] = React.useState(true)
   const [loading, setLoading] = React.useState(false)
   const [indexing, setIndexing] = React.useState<SearchIndexStatus | null>(null)
   /** The query whose results are shown; null when not searching. */
@@ -22,6 +23,7 @@ export function useSearch(datasetId: string | undefined) {
     setQuery("")
     setResults([])
     setTotal(0)
+    setTotalExact(true)
     setIndexing(null)
     setSearched(null)
     pending.current = null
@@ -40,6 +42,7 @@ export function useSearch(datasetId: string | undefined) {
       pending.current = building ? text : null
       setResults(response.results.map((r) => ({ id: r.row_id, data: r.data })))
       setTotal(response.total)
+      setTotalExact(response.total_exact)
       setSearched(text.trim())
     } catch {
       pending.current = null
@@ -68,5 +71,5 @@ export function useSearch(datasetId: string | undefined) {
     else reset()
   }
 
-  return { query, setQuery: changeQuery, results, total, loading, indexing, searched, search: () => run(query), clear: reset }
+  return { query, setQuery: changeQuery, results, total, totalExact, loading, indexing, searched, search: () => run(query), clear: reset }
 }

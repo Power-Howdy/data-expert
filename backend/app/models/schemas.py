@@ -129,7 +129,7 @@ class SearchRequest(BaseModel):
     columns: Optional[List[str]] = None
     limit: int = 100
     offset: int = 0
-    fuzzy: bool = True
+    fuzzy: bool = Field(True, description="Ignored; kept for compatibility")
 
 
 class SearchResult(BaseModel):
@@ -159,6 +159,7 @@ class BrowseCopyStatus(BaseModel):
 class SearchResponse(BaseModel):
     results: List[SearchResult]
     total: int
+    total_exact: bool = Field(True, description="False when counting stopped early; `total` is then a lower bound")
     took_ms: float
     mode: Literal["scan", "index"] = "scan"
     index: Optional[SearchIndexStatus] = Field(None, description="Set for large files, which are searched through an index")

@@ -78,12 +78,10 @@ Prefix: `/api/datasets/{id}/versions`. A `{ref}` is a commit id, a unique prefix
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/datasets/{id}/search` | `{"query", "columns"?, "limit": 100, "offset": 0, "fuzzy": true}` → results, `total`, `mode` (`scan`/`index`), `index` status |
+| POST | `/api/datasets/{id}/search` | `{"query", "columns"?, "limit": 100, "offset": 0}` → results, `total`, `total_exact` (false when `total` is a lower bound), `mode` (`scan`/`index`), `index` status |
 | GET | `/api/datasets/{id}/search/status` | Index status: `state`, `indexed`, `total`, `size_bytes`, `error` |
 | POST | `/api/datasets/{id}/search/index` | Start building the index |
 | GET | `/api/search/indexing` | Builds in progress (or failed), by dataset id |
-| GET | `/api/datasets/{id}/search/suggest?q=&limit=10` | Term suggestions (indexed files only) |
-
 ## Browse copy
 
 An optional copy of a large file with small row groups, so every page loads quickly. See

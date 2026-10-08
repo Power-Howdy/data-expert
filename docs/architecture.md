@@ -15,7 +15,7 @@
 │  data_loader ── dataset registry, lazy Polars frames            │
 │  manipulation ─ pending edits (changes.py) applied lazily       │
 │  versioning ─── commits, reverse deltas, snapshots, rebuild     │
-│  search_engine  Polars scan (small) / Tantivy index (large)     │
+│  search_engine  Polars scan (small) / block index (large)       │
 │  analytics ──── profiles, distributions, outliers               │
 │  ai/ ────────── planner, executor, generator, insights, views   │
 │  functions/ ─── built-in + generated function library, sandbox  │
@@ -55,7 +55,7 @@ needed.
 | `services/changes.py` | Applies pending operations to a lazy frame using a hidden row id column |
 | `services/manipulation.py` | Row paging, filtering and sorting; records pending edits; commits through version control |
 | `services/versioning/` | `repository.py` (on-disk layout), `deltas.py` (reverse deltas), `rebuild.py` (rebuild any version), `service.py` (`VersionControl`) |
-| `services/search_engine.py` | Full-text search: direct scan or background Tantivy index |
+| `services/search_engine.py` | Full-text search: direct scan, or a background block index (n-gram fingerprints) that limits the scan to blocks that can match |
 | `services/analytics.py` | Overview, profiles (sampled), correlations, missing matrix, distributions, outliers |
 | `services/profile_store.py` | Caches profiles and AI insights per dataset, keyed by a file fingerprint |
 | `services/ai/` | LLM client and provider presets, settings store, planner, function generator, executor, background jobs, views, insights |
@@ -132,7 +132,7 @@ A Vite + React + TypeScript single-page app. See the [Frontend guide](frontend.m
 | `backend/.data_expert/ai_settings.json` | AI providers, API keys, model settings, prompts |
 | `backend/.data_expert/functions.json` | Generated library functions |
 | `backend/.data_expert/profiles/`, `insights/` | Cached profiles and AI insights |
-| `backend/.data_expert/search_indexes/` | Tantivy indexes of large files |
+| `backend/.data_expert/search_indexes/` | Search indexes of large files (about 1/200 of each file) |
 | `backend/.data_expert/browse_copies/` | Opt-in copies of large files with small row groups, for fast paging |
 | `<data folder>/.data-expert-history/<file>/` | Version history of each tracked file |
 

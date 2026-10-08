@@ -14,7 +14,7 @@ Vite frontend (`frontend/`). Read [docs/architecture.md](docs/architecture.md) b
 
 ## Backend
 
-- Python 3.14, FastAPI, Pydantic v2, Polars 2, Tantivy. Run from `backend/`: `python -m app.main` (reads
+- Python 3.14, FastAPI, Pydantic v2, Polars 2, pyarrow, NumPy. Run from `backend/`: `python -m app.main` (reads
   `config.yaml` from the working directory). Tests: `cd backend && pytest`.
 - Keep data lazy: work with `pl.LazyFrame` and collect only what a response needs (a page, a count, a sample).
   Never collect a whole dataset in a request path; files can be many gigabytes.
@@ -31,7 +31,7 @@ Vite frontend (`frontend/`). Read [docs/architecture.md](docs/architecture.md) b
   `row_cache.release(path)` before replacing a data file. Opt-in browse copies (`services/browse_copy.py`) are
   read instead when they match the file; `browse_copies.delete(id)` stops a build that holds the file open.
 - Search: files under 256 MB are scanned with Polars (including pending edits); larger files use a background
-  Tantivy index. Call `search_engine.delete_index` before replacing a data file, because Windows locks open files.
+  block index (per-block n-gram fingerprints, ~1/200 of the file; candidate blocks are then scanned). Call `search_engine.delete_index` before replacing a data file, because Windows locks open files.
 - Generated AI functions must pass `services/functions/sandbox.py`. New built-ins go in
   `services/functions/builtin/` with `@builtin(...)`.
 - Endpoints are sync functions (thread pool); protect shared state with locks.

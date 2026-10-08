@@ -38,7 +38,7 @@ class PerformanceSettings(BaseSettings):
 
 
 class SearchSettings(BaseSettings):
-    engine: str = "tantivy"
+    engine: str = "blocks"
     index_path: str = "./.data_expert/search_indexes"
     max_results: int = 1000
     highlight: bool = True

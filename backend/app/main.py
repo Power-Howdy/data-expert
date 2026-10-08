@@ -241,17 +241,6 @@ def search_index_status(dataset_id: str):
     return _edit(search_engine.status, dataset_id)
 
 
-@app.get("/api/datasets/{dataset_id}/search/suggest")
-def search_suggest(dataset_id: str, q: str = Query(...), limit: int = Query(10)):
-    """Get search suggestions."""
-    dataset = get_dataset(dataset_id)
-    try:
-        suggestions = search_engine.suggest(dataset_id, q, limit)
-        return {"suggestions": suggestions}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
 @app.post("/api/datasets/{dataset_id}/search/index", response_model=SearchIndexStatus)
 def build_search_index(dataset_id: str):
     """Start building the search index in the background."""

@@ -47,7 +47,6 @@ scipy==1.18.1
 six==1.17.0
 sse-starlette==3.5.0
 starlette==1.7.0
-tantivy==0.26.2
 threadpoolctl==3.7.0
 tqdm==4.70.1
 types-PyYAML==6.0.12.20260906

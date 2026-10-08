@@ -8,12 +8,15 @@ interface SearchStatusProps {
   query: string
   shown: number
   total: number
+  /** False when `total` is a lower bound (counting stopped early). */
+  totalExact?: boolean
   indexing: SearchIndexStatus | null
   onClear: () => void
 }
 
 /** What the table shows while searching: match count, or progress of the index a large file needs first. */
-export function SearchStatus({ query, shown, total, indexing, onClear }: SearchStatusProps) {
+export function SearchStatus({ query, shown, total, totalExact = true, indexing, onClear }: SearchStatusProps) {
+  const count = `${formatNumber(total)}${totalExact ? "" : "+"}`
   return (
     <div className="space-y-2 rounded-2xl border-2 border-secondary/40 bg-secondary/5 px-4 py-2">
       <div className="flex items-center gap-3 text-sm font-bold">
@@ -27,7 +30,7 @@ export function SearchStatus({ query, shown, total, indexing, onClear }: SearchS
           <span>No rows match “{query}”</span>
         ) : (
           <span>
-            {total > shown ? `First ${formatNumber(shown)} of ${formatNumber(total)}` : formatNumber(total)} matches for “{query}”
+            {total > shown ? `First ${formatNumber(shown)} of ${count}` : count} matches for “{query}”
           </span>
         )}
         <Button variant="ghost" size="sm" className="ml-auto" onClick={onClear}>
@@ -38,7 +41,7 @@ export function SearchStatus({ query, shown, total, indexing, onClear }: SearchS
         <>
           <ProgressBar value={indexing.indexed} max={indexing.total} label="Indexing rows" />
           <p className="text-xs font-semibold text-muted-foreground">
-            This happens once per file version; later searches are instant. Results appear automatically when ready.
+            This happens once per file version and the index is tiny (about 1/200 of the file). Results appear automatically when ready.
           </p>
         </>
       )}

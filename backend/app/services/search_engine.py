@@ -1,33 +1,51 @@
 """Full-text search over rows.
 
 Files under SCAN_LIMIT_BYTES are searched directly with Polars: always current (pending edits included), real value types.
-Larger files are searched through a Tantivy index built in the background on first use. The index stores each row as
-JSON, so hits are returned without reading the data file (which can't be read by row position quickly). It is keyed
-by the file's size and modification time, so a changed file gets a fresh index.
+
+Larger files are searched through a compact block index built in the background on first use. The rows are split into
+blocks of at least MIN_BLOCK_ROWS; for each block the index keeps a BLOCK_BITS-bit fingerprint of the 2- and 3-byte
+snippets in its lowercased text (a Bloom-style filter). A search keeps only the blocks whose fingerprint has every
+snippet of every query word, then scans those blocks for real matches, so results are exactly those of a full scan.
+Blocks are sized so the index stays under 1/200 of the data file. It is keyed by the file's size and modification
+time, so a changed file gets a fresh index.
 """
 import gc
 import json
 import logging
+import math
 import re
 import shutil
 import threading
 import time
+from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple
 
+import numpy as np
 import polars as pl
-import tantivy
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 from app.core.config import settings
-from app.models.schemas import SearchIndexStatus, SearchRequest, SearchResponse, SearchResult
+from app.models.schemas import DataFormat, Dataset, SearchIndexStatus, SearchRequest, SearchResponse, SearchResult
+from app.services.browse_copy import browse_copies
 from app.services.changes import IDX
 from app.services.data_loader import dataset_manager
 
 logger = logging.getLogger(__name__)
 SCAN_LIMIT_BYTES = 256 * 1024 * 1024
-INDEX_VERSION = 2
-BATCH_ROWS = 20_000
-MAX_WRITER_HEAP = 512 * 1024 * 1024
+INDEX_VERSION = 3
+BLOCK_BITS = 1 << 20
+MIN_BLOCK_ROWS = 10_000
+# Data per block, relative to its fingerprint: keeps the index under 1/200 of the file.
+DATA_PER_FINGERPRINT = 200
+BUILD_WORKERS = 3
+SCAN_WORKERS = 6
+# After the requested page is filled, keep counting matches for at most this long.
+COUNT_BUDGET_S = 1.0
+_HASH = np.uint64(2654435761)
+_SHIFT = np.uint64(32 - int(math.log2(BLOCK_BITS)))
 
 
 def _text_expr(name: str, dtype: pl.DataType) -> Optional[pl.Expr]:
@@ -53,6 +71,159 @@ def _highlights(data: Dict[str, Any], terms: List[str]) -> Dict[str, List[str]]:
     }
 
 
+# ---------- fingerprints ----------
+
+def _hash(grams: np.ndarray) -> np.ndarray:
+    return ((grams.astype(np.uint64) * _HASH) & np.uint64(0xFFFFFFFF)) >> _SHIFT
+
+
+def block_fingerprint(df: pl.DataFrame) -> np.ndarray:
+    """Bits of the 3-byte and 2-byte snippets in a block's lowercased UTF-8 text."""
+    text = df.select(row_text(df.schema, df.columns).str.to_lowercase().str.join("\n")).item() or ""
+    data = np.frombuffer(text.encode("utf-8") + b"\n\n", dtype=np.uint8)
+    present = np.zeros(1 << 24, dtype=bool)
+    step = 1 << 23
+    for start in range(0, max(len(data) - 2, 0), step):
+        b = data[start:start + step + 2].astype(np.uint32)
+        present[(b[:-2] << 16) | (b[1:-1] << 8) | b[2:]] = True
+    trigrams = np.flatnonzero(present).astype(np.uint64)
+    bigrams = np.unique(trigrams >> np.uint64(8)) | np.uint64(1 << 24)
+    bits = np.zeros(BLOCK_BITS, dtype=bool)
+    bits[_hash(trigrams)] = True
+    bits[_hash(bigrams)] = True
+    return np.packbits(bits, bitorder="little")
+
+
+def query_bits(term: str) -> np.ndarray:
+    """Fingerprint bits a block must have to contain `term` (none for one-byte terms)."""
+    b = np.frombuffer(term.lower().encode("utf-8"), dtype=np.uint8).astype(np.uint64)
+    if len(b) >= 3:
+        return _hash((b[:-2] << np.uint64(16)) | (b[1:-1] << np.uint64(8)) | b[2:])
+    if len(b) == 2:
+        return _hash(np.array([(1 << 24) | (int(b[0]) << 8) | int(b[1])], dtype=np.uint64))
+    return np.array([], dtype=np.uint64)
+
+
+# ---------- reading rows in blocks ----------
+
+def _rebatch(frames: Iterable[pl.DataFrame], rows: int) -> Iterator[pl.DataFrame]:
+    """Frames of exactly `rows` rows (the last may be shorter)."""
+    buffer: List[pl.DataFrame] = []
+    size = 0
+    for frame in frames:
+        buffer.append(frame)
+        size += frame.height
+        while size >= rows:
+            merged = pl.concat(buffer, how="vertical_relaxed") if len(buffer) > 1 else buffer[0]
+            yield merged.head(rows)
+            rest = merged.slice(rows)
+            buffer, size = ([rest], rest.height) if rest.height else ([], 0)
+    if size:
+        yield pl.concat(buffer, how="vertical_relaxed") if len(buffer) > 1 else buffer[0]
+
+
+def _parquet_path(dataset: Dataset) -> Optional[str]:
+    return browse_copies.ready_path(dataset) or (dataset.path if dataset.format == DataFormat.PARQUET else None)
+
+
+def _all_rows(dataset: Dataset, batch_rows: int) -> Iterator[pl.DataFrame]:
+    """Every row of the saved file, streamed in batches (from the browse copy when there is one)."""
+    path = _parquet_path(dataset)
+    if not path:
+        yield from dataset_manager.get_dataframe(dataset.id).collect_batches(chunk_size=batch_rows)
+        return
+    file = pq.ParquetFile(path, buffer_size=1 << 20, pre_buffer=False)
+    try:
+        for batch in file.iter_batches(batch_size=batch_rows):
+            yield pl.from_arrow(pa.Table.from_batches([batch]))
+    finally:
+        file.close()
+
+
+def _group_starts(path: str) -> List[int]:
+    meta = pq.read_metadata(path)
+    starts = [0]
+    for g in range(meta.num_row_groups):
+        starts.append(starts[-1] + meta.row_group(g).num_rows)
+    return starts
+
+
+def _read_range(path: str, starts: List[int], lo: int, hi: int) -> pl.DataFrame:
+    """Rows lo..hi of a Parquet file whose row groups are small, reading only the groups that hold them."""
+    groups = [g for g in range(len(starts) - 1) if starts[g] < hi and starts[g + 1] > lo]
+    file = pq.ParquetFile(path, buffer_size=1 << 20, pre_buffer=False)
+    try:
+        table = file.read_row_groups(groups)
+    finally:
+        file.close()
+    return pl.from_arrow(table.slice(lo - starts[groups[0]], hi - lo))
+
+
+def _sequential_ranges(dataset: Dataset, ranges: List[Tuple[int, int]]) -> Iterator[Tuple[int, pl.DataFrame]]:
+    """The rows of each (start, end) range, in order, streaming the file and decoding only the row groups that hold them."""
+    path = _parquet_path(dataset)
+    if path:
+        stream = _parquet_stream(path, ranges)
+    else:
+        stream = _positions(dataset_manager.get_dataframe(dataset.id).collect_batches(chunk_size=MIN_BLOCK_ROWS))
+    pieces: List[pl.DataFrame] = []
+    i = 0
+    for pos, frame in stream:
+        end = pos + frame.height
+        while i < len(ranges):
+            lo, hi = ranges[i]
+            if lo < end and hi > pos:
+                pieces.append(frame.slice(max(lo - pos, 0), min(hi, end) - max(lo, pos)))
+            if hi > end:
+                break
+            if pieces:
+                yield lo, pl.concat(pieces, how="vertical_relaxed") if len(pieces) > 1 else pieces[0]
+            pieces = []
+            i += 1
+        if i == len(ranges):
+            return
+
+
+def _in_order(pool: ThreadPoolExecutor, tasks: Iterable, ahead: int) -> Iterator[Any]:
+    """Results of `tasks` (callables) in order, running up to `ahead` of them at once."""
+    pending: deque = deque()
+    for task in tasks:
+        pending.append(pool.submit(task))
+        if len(pending) >= ahead:
+            yield pending.popleft().result()
+    while pending:
+        yield pending.popleft().result()
+
+
+def _positions(frames: Iterable[pl.DataFrame]) -> Iterator[Tuple[int, pl.DataFrame]]:
+    pos = 0
+    for frame in frames:
+        yield pos, frame
+        pos += frame.height
+
+
+def _parquet_stream(path: str, ranges: List[Tuple[int, int]]) -> Iterator[Tuple[int, pl.DataFrame]]:
+    file = pq.ParquetFile(path, buffer_size=1 << 20, pre_buffer=False)
+    try:
+        meta = file.metadata
+        start = 0
+        for g in range(meta.num_row_groups):
+            rows = meta.row_group(g).num_rows
+            wanted = [(lo, hi) for lo, hi in ranges if lo < start + rows and hi > start]
+            if wanted:
+                pos, last = start, max(hi for _, hi in wanted)
+                for batch in file.iter_batches(batch_size=MIN_BLOCK_ROWS, row_groups=[g]):
+                    end = pos + batch.num_rows
+                    if any(lo < end and hi > pos for lo, hi in wanted):
+                        yield pos, pl.from_arrow(pa.Table.from_batches([batch]))
+                    pos = end
+                    if pos >= last:
+                        break
+            start += rows
+    finally:
+        file.close()
+
+
 class _Job:
     def __init__(self, total: int):
         self.total = total
@@ -67,8 +238,9 @@ class SearchEngine:
         self.base = Path(index_base_path or settings.search.index_path)
         self.base.mkdir(parents=True, exist_ok=True)
         self._jobs: Dict[str, _Job] = {}
-        self._open: Dict[str, tantivy.Index] = {}
+        self._open: Dict[str, Tuple[Dict[str, Any], np.ndarray]] = {}
         self._lock = threading.RLock()
+        self._remove_old_versions()
 
     # ---------- index files ----------
 
@@ -80,23 +252,30 @@ class SearchEngine:
     def _dir(self, dataset_id: str, key: str) -> Path:
         return self.base / dataset_id / key
 
-    @staticmethod
-    def _schema() -> tantivy.Schema:
-        builder = tantivy.SchemaBuilder()
-        builder.add_unsigned_field("pos", stored=True)
-        builder.add_text_field("text", stored=False)
-        builder.add_text_field("row", stored=True, index_option="basic", tokenizer_name="raw")
-        return builder.build()
+    def _remove_old_versions(self) -> None:
+        for folder in self.base.glob("*/*"):
+            if folder.is_dir() and not folder.name.startswith(f"v{INDEX_VERSION}-"):
+                shutil.rmtree(folder, ignore_errors=True)
 
     def _ready(self, dataset_id: str, key: str) -> bool:
-        return (self._dir(dataset_id, key) / "dx-meta.json").exists()
+        return (self._dir(dataset_id, key) / "meta.json").exists()
 
-    def _index(self, dataset_id: str, key: str) -> tantivy.Index:
+    def _index(self, dataset_id: str, key: str) -> Tuple[Dict[str, Any], np.ndarray]:
         with self._lock:
             cache_key = f"{dataset_id}/{key}"
             if cache_key not in self._open:
-                self._open[cache_key] = tantivy.Index.open(str(self._dir(dataset_id, key)))
+                folder = self._dir(dataset_id, key)
+                meta = json.loads((folder / "meta.json").read_text())
+                bits = np.fromfile(folder / "blocks.bin", dtype=np.uint8).reshape(meta["blocks"], BLOCK_BITS // 8)
+                self._open[cache_key] = (meta, bits)
             return self._open[cache_key]
+
+    @staticmethod
+    def block_rows(dataset: Dataset) -> int:
+        """Rows per block: enough data that each fingerprint is under 1/DATA_PER_FINGERPRINT of it."""
+        bytes_per_row = dataset.size_bytes / max(dataset.row_count, 1)
+        rows = BLOCK_BITS // 8 * DATA_PER_FINGERPRINT / max(bytes_per_row, 1)
+        return max(MIN_BLOCK_ROWS, math.ceil(rows / MIN_BLOCK_ROWS) * MIN_BLOCK_ROWS)
 
     # ---------- status & building ----------
 
@@ -137,49 +316,52 @@ class SearchEngine:
             job = _Job(dataset.row_count)
             self._jobs[dataset_id] = job
             job.thread = threading.Thread(
-                target=self._build, args=(dataset_id, self._key(dataset.path), job), daemon=True, name=f"index-{dataset_id}",
+                target=self._build, args=(dataset, self._key(dataset.path), job), daemon=True, name=f"index-{dataset_id}",
             )
             job.thread.start()
             return self.status(dataset_id)
 
-    def _build(self, dataset_id: str, key: str, job: _Job) -> None:
-        target = self._dir(dataset_id, key)
+    def _build(self, dataset: Dataset, key: str, job: _Job) -> None:
+        target = self._dir(dataset.id, key)
         tmp = target.with_name(key + ".tmp")
         shutil.rmtree(tmp, ignore_errors=True)
         tmp.mkdir(parents=True)
+        rows = self.block_rows(dataset)
         try:
-            lf = dataset_manager.get_dataframe(dataset_id)
-            schema = lf.collect_schema()
-            frame = lf.select(
-                row_text(schema, schema.names()).alias("text"), pl.struct(pl.all()).struct.json_encode().alias("row"),
-            )
-            index = tantivy.Index(self._schema(), str(tmp), reuse=False)
-            heap = min(settings.performance.max_memory_usage_mb * 1024 * 1024, MAX_WRITER_HEAP)
-            writer = index.writer(heap_size=heap)
-            for batch in frame.collect_batches(chunk_size=BATCH_ROWS):
-                for text, row in zip(batch["text"].to_list(), batch["row"].to_list()):
-                    writer.add_document(tantivy.Document(pos=job.indexed, text=text or "", row=row))
-                    job.indexed += 1
-                if job.cancelled:
-                    raise InterruptedError("cancelled")
-            writer.commit()
-            writer.wait_merging_threads()
-            (tmp / "dx-meta.json").write_text(json.dumps({"version": INDEX_VERSION, "rows": job.indexed}))
-            del writer, index
-            gc.collect()
+            blocks = 0
+            with open(tmp / "blocks.bin", "wb") as out, ThreadPoolExecutor(BUILD_WORKERS) as pool:
+                pending: deque = deque()
+
+                def write_next() -> None:
+                    nonlocal blocks
+                    future, height = pending.popleft()
+                    out.write(future.result().tobytes())
+                    blocks += 1
+                    job.indexed += height
+
+                for block in _rebatch(_all_rows(dataset, MIN_BLOCK_ROWS), rows):
+                    if job.cancelled:
+                        raise InterruptedError("cancelled")
+                    pending.append((pool.submit(block_fingerprint, block), block.height))
+                    while len(pending) >= BUILD_WORKERS:
+                        write_next()
+                while pending:
+                    write_next()
+            meta = {"version": INDEX_VERSION, "rows": job.indexed, "block_rows": rows, "blocks": blocks}
+            (tmp / "meta.json").write_text(json.dumps(meta))
             tmp.rename(target)
             for old in target.parent.iterdir():
                 if old != target:
                     shutil.rmtree(old, ignore_errors=True)
             with self._lock:
-                if self._jobs.get(dataset_id) is job:
-                    del self._jobs[dataset_id]
-            logger.info(f"Search index for {dataset_id} built: {job.indexed} rows")
+                if self._jobs.get(dataset.id) is job:
+                    del self._jobs[dataset.id]
+            logger.info(f"Search index for {dataset.name} built: {job.indexed} rows in {blocks} blocks")
         except Exception as e:
             shutil.rmtree(tmp, ignore_errors=True)
             if not job.cancelled:
-                logger.exception(f"Building the search index for {dataset_id} failed")
-                job.error = str(e)
+                logger.exception(f"Building the search index for {dataset.name} failed")
+                job.error = str(e) or type(e).__name__
 
     def delete_index(self, dataset_id: str) -> None:
         """Stop any build and remove the dataset's indexes (call before and after replacing its file)."""
@@ -211,8 +393,10 @@ class SearchEngine:
         status = self.build_index(dataset_id)
         if status.state != "ready":
             return SearchResponse(results=[], total=0, took_ms=(time.time() - start) * 1000, mode="index", index=status)
-        results, total = self._index_search(dataset_id, self._key(dataset.path), request, terms, limit)
-        return SearchResponse(results=results, total=total, took_ms=(time.time() - start) * 1000, mode="index", index=status)
+        results, total, exact = self._index_search(dataset, self._key(dataset.path), request, terms, limit)
+        return SearchResponse(
+            results=results, total=total, total_exact=exact, took_ms=(time.time() - start) * 1000, mode="index", index=status,
+        )
 
     def _scan(self, dataset_id: str, request: SearchRequest, terms: List[str], limit: int):
         from app.services.manipulation import manipulation_engine
@@ -230,10 +414,18 @@ class SearchEngine:
             results.append(SearchResult(row_id=str(row_id), score=1.0, highlights=_highlights(row, terms), data=row))
         return results, total
 
-    def _index_search(self, dataset_id: str, key: str, request: SearchRequest, terms: List[str], limit: int):
+    def candidate_blocks(self, dataset_id: str, key: str, terms: List[str]) -> Tuple[Dict[str, Any], List[int]]:
+        meta, bits = self._index(dataset_id, key)
+        keep = np.ones(meta["blocks"], dtype=bool)
+        for term in terms:
+            for h in query_bits(term):
+                keep &= ((bits[:, int(h) >> 3] >> (int(h) & 7)) & 1).astype(bool)
+        return meta, np.flatnonzero(keep).tolist()
+
+    def _index_search(self, dataset: Dataset, key: str, request: SearchRequest, terms: List[str], limit: int):
         from app.services.manipulation import manipulation_engine
 
-        ops = manipulation_engine.pending_ops(dataset_id)
+        ops = manipulation_engine.pending_ops(dataset.id)
         if any(o["type"] == "transform" for o in ops):
             raise ValueError("Large files are searched as saved on disk; save or discard the pending transform first")
         deleted = {o["id"] for o in ops if o["type"] == "delete"}
@@ -242,35 +434,62 @@ class SearchEngine:
             if o["type"] == "update":
                 updates.setdefault(o["id"], {}).update(o["values"])
 
-        index = self._index(dataset_id, key)
-        searcher = index.searcher()
-        query, _ = index.parse_query_lenient(request.query, ["text"], conjunction_by_default=True)
-        found = searcher.search(query, limit=limit, offset=request.offset, count=True)
-        if not found.hits and request.fuzzy:
-            query, _ = index.parse_query_lenient(
-                request.query, ["text"], fuzzy_fields={"text": (False, 1, True)}, conjunction_by_default=True,
-            )
-            found = searcher.search(query, limit=limit, offset=request.offset, count=True)
+        meta, blocks = self.candidate_blocks(dataset.id, key, terms)
+        size = meta["block_rows"]
+        blocks = sorted(set(blocks) | {i // size for i in updates if i // size < meta["blocks"]})
+        ranges = [(b * size, min((b + 1) * size, meta["rows"])) for b in blocks]
 
-        results = []
-        for score, address in found.hits:
-            doc = searcher.doc(address)
-            position = int(doc.get_first("pos"))
-            if position in deleted:
-                continue
-            data = {**json.loads(doc.get_first("row")), **updates.get(position, {})}
-            results.append(SearchResult(row_id=str(position), score=float(score), highlights=_highlights(data, terms), data=data))
-        return results, found.count or 0
+        def hits(lo: int, frame: pl.DataFrame):
+            return lo, frame, self._hits(frame, lo, request.columns, terms, deleted, updates)
 
-    def suggest(self, dataset_id: str, prefix: str, limit: int = 10) -> List[str]:
-        dataset = dataset_manager.get_dataset(dataset_id)
-        if not dataset or not prefix:
-            return []
-        key = self._key(dataset.path)
-        if not self._ready(dataset_id, key):
-            return []
-        searcher = self._index(dataset_id, key).searcher()
-        return [term for term, _ in searcher.terms_with_prefix("text", prefix.lower(), limit=limit)]
+        path = _parquet_path(dataset)
+        starts = _group_starts(path) if path else []
+        if starts and ranges and max(b - a for a, b in zip(starts, starts[1:])) <= 4 * size:
+            tasks = (lambda r=r: hits(r[0], _read_range(path, starts, *r)) for r in ranges)
+        else:
+            tasks = (lambda lo=lo, f=f: hits(lo, f) for lo, f in _sequential_ranges(dataset, ranges))
+
+        results: List[SearchResult] = []
+        total = scanned = 0
+        filled_at: Optional[float] = None
+        pool = ThreadPoolExecutor(SCAN_WORKERS)
+        try:
+            for lo, frame, found in _in_order(pool, tasks, SCAN_WORKERS + 2):
+                scanned += 1
+                first = max(request.offset - total, 0)
+                for i in found[first:first + limit - len(results)]:
+                    data = {**frame.row(i, named=True), **updates.get(lo + i, {})}
+                    results.append(SearchResult(row_id=str(lo + i), score=1.0, highlights=_highlights(data, terms), data=data))
+                total += len(found)
+                if len(results) >= limit:
+                    filled_at = filled_at or time.time()
+                    if time.time() - filled_at > COUNT_BUDGET_S:
+                        break
+        finally:
+            pool.shutdown(wait=False, cancel_futures=True)
+        return results, total, scanned == len(ranges)
+
+    @staticmethod
+    def _hits(frame: pl.DataFrame, lo: int, columns: Optional[List[str]], terms: List[str],
+              deleted: set, updates: Dict[int, Dict[str, Any]]) -> List[int]:
+        """Indexes of the frame's rows that contain every term, with pending edits applied."""
+        names = [c for c in (columns or frame.columns) if c in frame.schema]
+        text = row_text(frame.schema, names)
+        hit = frame.select(pl.all_horizontal([text.str.contains(f"(?i){re.escape(t)}") for t in terms])).to_series()
+        found = set(np.flatnonzero(hit.to_numpy()).tolist())
+        lowered = [t.lower() for t in terms]
+        for position, values in updates.items():
+            i = position - lo
+            if 0 <= i < frame.height:
+                data = {**frame.row(i, named=True), **values}
+                content = "\n".join(
+                    json.dumps(v, default=str) if isinstance(v, (dict, list)) else str(v)
+                    for k, v in data.items() if k in names and v is not None
+                ).lower()
+                found.discard(i)
+                if all(t in content for t in lowered):
+                    found.add(i)
+        return sorted(i for i in found if lo + i not in deleted)
 
 
 search_engine = SearchEngine()
