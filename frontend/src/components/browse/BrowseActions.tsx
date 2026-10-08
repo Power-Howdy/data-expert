@@ -1,10 +1,12 @@
-import { Filter, Loader2, Plus, Replace, Save, Search, Sparkles } from "lucide-react"
+import { Filter, Plus, Replace, Save, Search, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface BrowseActionsProps {
-  onSearch?: () => void
-  searchLoading?: boolean
+  searchOpen: boolean
+  /** Omitted while an AI result is shown, which cannot be searched. */
+  onToggleSearch?: () => void
   filterCount: number
+  filtersOpen: boolean
   onToggleFilters: () => void
   aiOpen: boolean
   onToggleAI: () => void
@@ -15,20 +17,20 @@ interface BrowseActionsProps {
 }
 
 export function BrowseActions({
-  onSearch, searchLoading, filterCount, onToggleFilters, aiOpen, onToggleAI, onSave, onAddRow, onReplace,
+  searchOpen, onToggleSearch, filterCount, filtersOpen, onToggleFilters, aiOpen, onToggleAI, onSave, onAddRow,
+  onReplace,
 }: BrowseActionsProps) {
   return (
     <>
       <Button variant={aiOpen ? "default" : "outline"} size="sm" onClick={onToggleAI}>
         <Sparkles className="h-4 w-4" /> AI
       </Button>
-      {onSearch && (
-        <Button variant="sky" size="sm" onClick={onSearch} disabled={searchLoading}>
-          {searchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-          Search
+      {onToggleSearch && (
+        <Button variant={searchOpen ? "default" : "outline"} size="sm" onClick={onToggleSearch}>
+          <Search className="h-4 w-4" /> Search
         </Button>
       )}
-      <Button variant="outline" size="sm" onClick={onToggleFilters}>
+      <Button variant={filtersOpen ? "default" : "outline"} size="sm" onClick={onToggleFilters}>
         <Filter className="h-4 w-4" /> Filters ({filterCount})
       </Button>
       {onAddRow && (

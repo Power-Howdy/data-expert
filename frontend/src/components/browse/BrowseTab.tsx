@@ -1,5 +1,4 @@
 import * as React from "react"
-import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { EmptyState } from "@/components/common/EmptyState"
 import { PageHeader } from "@/components/common/PageHeader"
@@ -8,6 +7,7 @@ import { formatNumber } from "@/lib/utils"
 import { useBrowseData } from "./useBrowseData"
 import { useSearch } from "./useSearch"
 import { SearchStatus } from "./SearchStatus"
+import { SearchBar } from "./SearchBar"
 import { useDatasetColumns } from "./useDatasetColumns"
 import { useAITransform } from "./useAITransform"
 import { FilterPanel } from "./FilterPanel"
@@ -26,6 +26,7 @@ export function BrowseTab() {
   const columns = useDatasetColumns(schema)
   const data = useBrowseData(dataset, ai.view)
   const search = useSearch(dataset?.id)
+  const [showSearch, setShowSearch] = React.useState(false)
   const [showFilters, setShowFilters] = React.useState(false)
   const [showAI, setShowAI] = React.useState(false)
   const [dialog, setDialog] = React.useState<BrowseDialog>(null)
@@ -47,8 +48,8 @@ export function BrowseTab() {
         subtitle={`${formatNumber(dataset.row_count)} rows · ${dataset.schema.length} columns · ${dataset.format}`}
         actions={
           <BrowseActions
-            onSearch={ai.view ? undefined : search.search} searchLoading={search.loading}
-            filterCount={data.filters.length} onToggleFilters={() => setShowFilters(!showFilters)}
+            searchOpen={showSearch} onToggleSearch={ai.view ? undefined : () => setShowSearch(!showSearch)}
+            filterCount={data.filters.length} filtersOpen={showFilters} onToggleFilters={() => setShowFilters(!showFilters)}
             aiOpen={showAI} onToggleAI={() => setShowAI(!showAI)}
             onSave={() => setDialog("save")}
             onAddRow={ai.view ? undefined : () => setDialog("add")}
@@ -56,15 +57,12 @@ export function BrowseTab() {
           />
         }
       />
-      {!ai.view && (
-        <Input
-          placeholder="Search across rows..." value={search.query} className="max-w-md"
-          onChange={(e) => search.setQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && search.search()}
-        />
-      )}
       <div className="shrink-0 space-y-5 empty:hidden">
         <PendingChangesBar datasetId={dataset.id} />
         {showAI && <AIAssistant ai={ai} />}
+        {showSearch && !ai.view && (
+          <SearchBar query={search.query} loading={search.loading} onQueryChange={search.setQuery} onSearch={search.search} />
+        )}
         {ai.view && <ViewBanner view={ai.view} onDiscard={ai.discardView} onApply={ai.applyView} applying={ai.applying} />}
         {showFilters && <FilterPanel filters={data.filters} columns={schema.map((c) => c.name)} onChange={data.setFilters} />}
       </div>

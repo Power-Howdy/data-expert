@@ -60,7 +60,9 @@ The **Browse** tab shows rows page by page.
 
 ## Searching
 
-Type words in the search box and press **Enter**. Rows that contain *all* the words, in any column, are shown.
+Click **Search** on the Browse tab to show the search box (click it again to hide it), type words and press
+**Enter**. Rows that contain *all* the words, in any column, are shown. Hiding the box keeps the current results;
+use **Clear search** to return to all rows.
 
 - Search ignores upper and lower case and looks inside nested values.
 - Files under 256 MB are scanned directly, and the results include your unsaved edits.

@@ -36,7 +36,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
   },
   {
     id: "search", title: "Searching", icon: Search, tab: "browse",
-    intro: "Type words in the search box on the Browse tab and press Enter. Rows containing all the words are shown.",
+    intro: "Click Search on the Browse tab to show the search box, type words and press Enter. Rows containing all the words are shown.",
     points: [
       "Search looks in every column, including text inside nested values, and ignores upper/lower case.",
       "Small files are searched directly and include your unsaved edits.",
