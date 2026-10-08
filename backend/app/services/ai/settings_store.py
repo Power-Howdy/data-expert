@@ -58,7 +58,13 @@ class AISettingsStore:
         if not self.path.exists():
             return default_settings()
         try:
-            return AISettings(**json.loads(self.path.read_text(encoding="utf-8")))
+            data = json.loads(self.path.read_text(encoding="utf-8"))
+            prompts = data.get("prompts", {})
+            for key, default in DEFAULT_PROMPTS.model_dump().items():
+                if not prompts.get(key) or (key == "planner" and "ai_column" in prompts[key]):
+                    prompts[key] = default
+            data["prompts"] = prompts
+            return AISettings(**data)
         except (OSError, ValueError) as e:
             logger.warning(f"Could not read AI settings, using defaults: {e}")
             return default_settings()
@@ -89,7 +95,9 @@ class AISettingsStore:
                 active_provider_id=update.active_provider_id,
                 providers=providers,
                 model=update.model,
-                prompts=update.prompts,
+                prompts=update.prompts.model_copy(update={
+                    k: v for k, v in DEFAULT_PROMPTS.model_dump().items() if not getattr(update.prompts, k)
+                }),
             )
             self._save()
             return self.get()

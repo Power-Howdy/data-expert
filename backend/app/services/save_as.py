@@ -5,7 +5,7 @@ import polars as pl
 
 from app.models.ai_schemas import SaveAsRequest
 from app.models.schemas import DataFormat, Dataset, LoadDatasetRequest
-from app.services.ai.operations import filter_expr
+from app.services.functions.expressions import filter_expr
 from app.services.ai.views import view_store
 from app.services.data_loader import dataset_manager, data_loader
 

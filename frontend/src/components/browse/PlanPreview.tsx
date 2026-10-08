@@ -1,4 +1,4 @@
-import { AlertTriangle, Play, Sparkles, X } from "lucide-react"
+import { AlertTriangle, Play, ShieldCheck, Sparkles, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import type { PlanStep, TransformPlan } from "@/types/ai"
@@ -17,6 +17,7 @@ function summarize(step: PlanStep) {
 }
 
 export function PlanPreview({ plan, onRun, onDismiss, running }: PlanPreviewProps) {
+  const isNew = (step: PlanStep) => plan.new_functions.includes(step.op)
   return (
     <div className="space-y-3 rounded-2xl border-2 border-primary/30 bg-primary/5 p-4">
       {plan.explanation && <p className="text-sm font-semibold">{plan.explanation}</p>}
@@ -28,10 +29,11 @@ export function PlanPreview({ plan, onRun, onDismiss, running }: PlanPreviewProp
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={step.op === "ai_column" ? "gold" : "outline"}>
-                  {step.op === "ai_column" && <Sparkles className="mr-1 h-3 w-3" />}
+                <Badge variant={isNew(step) ? "gold" : "outline"}>
+                  {isNew(step) && <Sparkles className="mr-1 h-3 w-3" />}
                   {step.op}
                 </Badge>
+                {isNew(step) && <span className="text-xs font-bold text-muted-foreground">new function, saved to library</span>}
                 <span className="font-bold">{step.description}</span>
               </div>
               <p className="mt-1 break-words font-mono text-xs text-muted-foreground">{summarize(step)}</p>
@@ -45,8 +47,8 @@ export function PlanPreview({ plan, onRun, onDismiss, running }: PlanPreviewProp
         </p>
       ))}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-xs font-bold text-muted-foreground">
-          {plan.ai_rows > 0 ? `About ${plan.ai_rows.toLocaleString()} rows will be sent to the model` : "No model calls needed"}
+        <span className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
+          <ShieldCheck className="h-4 w-4 text-emerald-500" /> Runs locally. No data rows are sent to the model.
         </span>
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" onClick={onDismiss} disabled={running}>

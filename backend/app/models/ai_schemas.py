@@ -26,15 +26,13 @@ class AIModelSettings(BaseModel):
     timeout_seconds: int = Field(120, ge=5, le=3600)
     json_mode: bool = False
     disable_thinking: bool = True
-    max_ai_rows: int = Field(100, ge=1, le=100_000)
-    batch_size: int = Field(10, ge=1, le=200)
-    concurrency: int = Field(2, ge=1, le=32)
+    sample_rows: int = Field(5, ge=0, le=50)
 
 
 class AIPrompts(BaseModel):
     system: str
     planner: str
-    row_task: str
+    function_writer: str = ""
     insights: str
 
 
@@ -100,7 +98,7 @@ class PlanStep(BaseModel):
 class TransformPlan(BaseModel):
     explanation: str = ""
     steps: List[PlanStep] = Field(default_factory=list)
-    ai_rows: int = 0
+    new_functions: List[str] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
 
 

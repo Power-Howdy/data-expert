@@ -8,7 +8,7 @@ import polars as pl
 
 from app.models.ai_schemas import PlanStep, ViewInfo
 from app.models.schemas import FilterParams
-from app.services.ai.operations import filter_expr
+from app.services.functions.expressions import filter_expr
 from app.services.data_loader import dataset_manager, data_loader
 
 MAX_VIEWS = 50

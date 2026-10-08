@@ -36,19 +36,15 @@ export function ModelSettings({ draft }: { draft: SettingsDraft }) {
       </section>
 
       <section className="space-y-3">
-        <SubHeading>Row processing (AI columns)</SubHeading>
+        <SubHeading>Data privacy</SubHeading>
+        <p className="text-xs text-muted-foreground">
+          Your data is processed locally by library functions. The model only receives the schema, column
+          statistics and this many sample rows (long values truncated) to choose or write functions.
+        </p>
         <div className="grid gap-4 sm:grid-cols-3">
           <NumberField
-            label="Max rows per step" value={m.max_ai_rows} min={1}
-            hint="Caps cost; other rows stay empty" onChange={(v) => set({ max_ai_rows: v })}
-          />
-          <NumberField
-            label="Rows per request" value={m.batch_size} min={1} max={200}
-            hint="Lower for small local models" onChange={(v) => set({ batch_size: v })}
-          />
-          <NumberField
-            label="Parallel requests" value={m.concurrency} min={1} max={32}
-            onChange={(v) => set({ concurrency: v })}
+            label="Sample rows sent" value={m.sample_rows} min={0} max={50}
+            hint="0 = schema only" onChange={(v) => set({ sample_rows: v })}
           />
         </div>
       </section>

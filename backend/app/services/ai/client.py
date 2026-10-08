@@ -35,20 +35,38 @@ def _error_detail(response: httpx.Response) -> str:
         return response.text[:300]
 
 
+def _close_brackets(text: str) -> str:
+    """Append the closers a reply forgot (small models often stop right before the final brace)."""
+    stack, in_string, escaped = [], False, False
+    for ch in text:
+        if in_string:
+            if ch == '"' and not escaped:
+                in_string = False
+            escaped = not escaped and ch == "\\"
+            continue
+        if ch == '"':
+            in_string = True
+        elif ch in "{[":
+            stack.append("}" if ch == "{" else "]")
+        elif ch in "}]" and stack:
+            stack.pop()
+    return text + ('"' if in_string else "") + "".join(reversed(stack))
+
+
 def parse_json(text: str) -> Any:
-    """Parse JSON from a model reply, tolerating code fences and surrounding prose."""
+    """Parse JSON from a model reply, tolerating code fences, surrounding prose and missing closing brackets."""
     cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip(), flags=re.IGNORECASE)
-    try:
-        return json.loads(cleaned)
-    except ValueError:
-        pass
+    candidates = [cleaned]
     for open_char, close_char in (("{", "}"), ("[", "]")):
         start, end = cleaned.find(open_char), cleaned.rfind(close_char)
-        if start != -1 and end > start:
-            try:
-                return json.loads(cleaned[start:end + 1])
-            except ValueError:
-                continue
+        if start != -1:
+            candidates += [cleaned[start:end + 1]] if end > start else []
+            candidates.append(_close_brackets(cleaned[start:]))
+    for candidate in candidates:
+        try:
+            return json.loads(candidate, strict=False)
+        except ValueError:
+            continue
     raise AIError("The model did not return valid JSON")
 
 

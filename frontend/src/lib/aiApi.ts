@@ -1,7 +1,7 @@
 import { api } from "@/lib/api"
 import type { Dataset, RowsResponse } from "@/types"
 import type {
-  AIInsights, AIJob, AIProvider, AISettings, ProviderTestResult, SaveFormat, TransformPlan,
+  AIInsights, AIJob, AIProvider, AISettings, FunctionSpec, ProviderTestResult, SaveFormat, TransformPlan,
 } from "@/types/ai"
 
 const http = api.client
@@ -21,6 +21,13 @@ export const aiApi = {
   },
   async testProvider(provider: AIProvider): Promise<ProviderTestResult> {
     return (await http.post("/ai/test", { provider }, LONG)).data
+  },
+
+  async listFunctions(): Promise<FunctionSpec[]> {
+    return (await http.get("/ai/functions")).data
+  },
+  async deleteFunction(name: string): Promise<void> {
+    await http.delete(`/ai/functions/${name}`)
   },
 
   async plan(datasetId: string, prompt: string, viewId?: string): Promise<TransformPlan> {

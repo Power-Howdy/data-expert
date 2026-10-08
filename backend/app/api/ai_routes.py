@@ -8,6 +8,7 @@ from app.models.ai_schemas import (
     AIInsights, AISettingsPublic, AISettingsUpdate, ApplyPlanRequest, InsightsRequest, JobStatus,
     PlanRequest, ProviderTestRequest, ProviderTestResponse, SaveAsRequest, TransformPlan, ViewInfo,
 )
+from app.models.function_schemas import FunctionSpec
 from app.models.schemas import Dataset, FilterParams, RowData, RowsResponse
 from app.services.ai.client import AIError, LLMClient
 from app.services.ai.executor import start_apply
@@ -17,6 +18,7 @@ from app.services.ai.planner import plan_transform
 from app.services.ai.settings_store import ai_settings_store
 from app.services.ai.views import view_store
 from app.services.data_loader import dataset_manager
+from app.services.functions.library import function_library
 from app.services.save_as import save_as_dataset
 
 router = APIRouter(prefix="/api")
@@ -92,6 +94,20 @@ def get_job(job_id: str):
 def cancel_job(job_id: str):
     job_manager.cancel(job_id)
     return {"success": True}
+
+
+# ==================== Function library ====================
+
+@router.get("/ai/functions", response_model=List[FunctionSpec])
+def list_functions():
+    return function_library.list()
+
+
+@router.delete("/ai/functions/{name}")
+def delete_function(name: str):
+    if function_library.get(name) and function_library.get(name).source == "builtin":
+        raise HTTPException(status_code=400, detail="Built-in functions cannot be deleted")
+    return {"success": function_library.delete(name)}
 
 
 # ==================== Views ====================

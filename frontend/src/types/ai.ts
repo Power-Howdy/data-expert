@@ -20,15 +20,13 @@ export interface AIModelSettings {
   timeout_seconds: number
   json_mode: boolean
   disable_thinking: boolean
-  max_ai_rows: number
-  batch_size: number
-  concurrency: number
+  sample_rows: number
 }
 
 export interface AIPrompts {
   system: string
   planner: string
-  row_task: string
+  function_writer: string
   insights: string
 }
 
@@ -57,8 +55,33 @@ export interface PlanStep {
 export interface TransformPlan {
   explanation: string
   steps: PlanStep[]
-  ai_rows: number
+  new_functions: string[]
   warnings: string[]
+}
+
+export interface FunctionParam {
+  name: string
+  type: string
+  required: boolean
+  default?: unknown
+  description: string
+  options: string[]
+}
+
+export interface FunctionSpec {
+  name: string
+  title: string
+  category: string
+  purpose: string
+  params: FunctionParam[]
+  input: string
+  output: string
+  example: Record<string, unknown>
+  source: "builtin" | "generated"
+  code?: string | null
+  prompt: string
+  created_at?: string | null
+  uses: number
 }
 
 export interface DataView {

@@ -6,10 +6,14 @@ const PROMPTS: Array<{ key: keyof AIPrompts; label: string; hint: string; rows: 
   { key: "system", label: "System prompt", hint: "Prepended to every request.", rows: 3 },
   {
     key: "planner", label: "Transform planner",
-    hint: "Guides how Browse prompts become data operations. The list of allowed operations is added automatically.",
+    hint: "Guides how Browse prompts become function calls. The function library and reply format are added automatically.",
     rows: 8,
   },
-  { key: "row_task", label: "Row enrichment", hint: "Used for AI columns (tagging, extraction, filling gaps) on each row.", rows: 4 },
+  {
+    key: "function_writer", label: "Function writer",
+    hint: "Used when no library function fits and the model writes a new one. Code rules are added automatically.",
+    rows: 4,
+  },
   { key: "insights", label: "Insights report", hint: "Used on the Stats tab together with the dataset profile.", rows: 5 },
 ]
 

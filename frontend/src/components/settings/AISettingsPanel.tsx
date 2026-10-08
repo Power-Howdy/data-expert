@@ -7,6 +7,7 @@ import { useSettingsDraft } from "./useSettingsDraft"
 import { ProviderSettings } from "./ProviderSettings"
 import { ModelSettings } from "./ModelSettings"
 import { PromptSettings } from "./PromptSettings"
+import { FunctionLibrary } from "./FunctionLibrary"
 
 export function AISettingsPanel() {
   const s = useSettingsDraft()
@@ -33,10 +34,11 @@ export function AISettingsPanel() {
         </div>
       ) : (
         <Tabs defaultValue="provider">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="provider">Provider</TabsTrigger>
             <TabsTrigger value="model">Model</TabsTrigger>
             <TabsTrigger value="prompts">Prompts</TabsTrigger>
+            <TabsTrigger value="functions">Functions</TabsTrigger>
           </TabsList>
           <TabsContent value="provider" className="pt-4">
             <ProviderSettings draft={s} />
@@ -46,6 +48,9 @@ export function AISettingsPanel() {
           </TabsContent>
           <TabsContent value="prompts" className="pt-4">
             <PromptSettings draft={s} />
+          </TabsContent>
+          <TabsContent value="functions" className="pt-4">
+            <FunctionLibrary />
           </TabsContent>
         </Tabs>
       )}
