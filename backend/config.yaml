@@ -1,0 +1,48 @@
+# Data Expert Backend Configuration
+server:
+  host: "0.0.0.0"
+  port: 8000
+  cors_origins: 
+    - "http://localhost:5173"
+    - "http://127.0.0.1:5173"
+    - "tauri://localhost"
+
+data:
+  max_stream_chunk: 10000
+  default_page_size: 100
+  max_preview_rows: 1000
+  search_index_path: "./.data_expert/search_indexes"
+  allowed_extensions:
+    - ".parquet"
+    - ".json"
+    - ".jsonl"
+    - ".json.gz"
+    - ".csv"
+    - ".tsv"
+    - ".feather"
+    - ".avro"
+    - ".orc"
+    - ".xlsx"
+    - ".xls"
+
+formats:
+  auto_detect: true
+  encoding: "utf-8"
+  csv_delimiter: ","
+  json_lines: true
+
+performance:
+  polars_threads: 0
+  stream_buffer_size: 65536
+  max_memory_usage_mb: 2048
+
+search:
+  engine: "tantivy"
+  index_path: "./.data_expert/search_indexes"
+  max_results: 1000
+  highlight: true
+
+export:
+  max_rows_per_file: 1000000
+  compression: "gzip"
+  partition_size_mb: 100

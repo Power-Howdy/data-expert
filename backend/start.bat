@@ -1,0 +1,1 @@
+venv/Scrtipts/activate.bat
