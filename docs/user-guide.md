@@ -21,6 +21,10 @@ bar or **User guide** in the footer.
   - The **Data folder** section holds the folder picker and the file tree. Click its header to fold it.
   - The **Loaded** section lists open datasets. While a search index is being built for a large file, a ring
     with a percentage appears next to it.
+  - Large datasets show two icon badges: a magnifier (indexed for searching) and a lightning bolt (optimized
+    for browsing). A colored icon means it is done, a faded one means not yet, and a pulsing bolt means the browse
+    copy is being built. Hover an icon for details. Files that are fast without them (small files, or files with
+    small row groups) show no badge.
 - **Top bar:** tabs (Browse, Stats, History, Export, Combine), AI settings (sparkle icon), the user guide (**?**)
   and the theme switch.
 - **Footer:** app version, a privacy reminder, backend status (green dot when the API is reachable), the user

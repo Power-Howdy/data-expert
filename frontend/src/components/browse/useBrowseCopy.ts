@@ -1,5 +1,6 @@
 import * as React from "react"
 import { api } from "@/lib/api"
+import { useIndexingStore } from "@/stores/useIndexingStore"
 import type { BrowseCopyStatus, Dataset } from "@/types"
 
 const POLL_MS = 1500
@@ -49,6 +50,7 @@ export function useBrowseCopy(dataset: Dataset | undefined) {
       // the API client shows the error
     } finally {
       setBusy(false)
+      useIndexingStore.getState().refresh()
     }
   }
 

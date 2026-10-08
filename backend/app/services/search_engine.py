@@ -295,6 +295,18 @@ class SearchEngine:
             return SearchIndexStatus(state="building", indexed=job.indexed, total=job.total)
         return SearchIndexStatus(state="missing", total=dataset.row_count)
 
+    def state(self, dataset: Dataset) -> str:
+        """Index state without measuring it: `not_needed` for files searched by a direct scan."""
+        if dataset.size_bytes < SCAN_LIMIT_BYTES:
+            return "not_needed"
+        job = self._jobs.get(dataset.id)
+        if job:
+            return "error" if job.error else "building"
+        try:
+            return "ready" if self._ready(dataset.id, self._key(dataset.path)) else "missing"
+        except OSError:
+            return "missing"
+
     def active(self) -> Dict[str, SearchIndexStatus]:
         """Indexes being built or that failed, by dataset id."""
         with self._lock:

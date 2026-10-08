@@ -39,6 +39,7 @@ class BrowseCopies:
     def __init__(self, base_path: Optional[str] = None):
         self.base = Path(base_path or Path(settings.data.registry_path).parent / "browse_copies")
         self._jobs: Dict[str, _Job] = {}
+        self._needed: Dict[str, bool] = {}
         self._lock = threading.RLock()
 
     # ---------- paths ----------
@@ -57,15 +58,27 @@ class BrowseCopies:
 
     # ---------- status ----------
 
-    @staticmethod
-    def needed(dataset: Dataset) -> bool:
+    def needed(self, dataset: Dataset) -> bool:
         if dataset.format != DataFormat.PARQUET:
             return dataset.size_bytes >= SLOW_FILE_BYTES
-        try:
-            meta = pq.ParquetFile(dataset.path).metadata
-        except (OSError, pa.ArrowException):
-            return False
-        return any(meta.row_group(i).total_byte_size > SLOW_GROUP_BYTES for i in range(meta.num_row_groups))
+        cache_key = f"{dataset.path}:{dataset.size_bytes}:{dataset.last_modified.isoformat()}"
+        if cache_key not in self._needed:
+            try:
+                meta = pq.ParquetFile(dataset.path).metadata
+                groups = (meta.row_group(i).total_byte_size for i in range(meta.num_row_groups))
+                self._needed[cache_key] = any(size > SLOW_GROUP_BYTES for size in groups)
+            except (OSError, pa.ArrowException):
+                return False
+        return self._needed[cache_key]
+
+    def state(self, dataset: Dataset) -> str:
+        """Copy state without measuring it: `not_needed` for files whose pages are fast anyway."""
+        if self.ready_path(dataset):
+            return "ready"
+        job = self._jobs.get(dataset.id)
+        if job:
+            return "error" if job.error else "building"
+        return "missing" if self.needed(dataset) else "not_needed"
 
     def status(self, dataset_id: str) -> BrowseCopyStatus:
         dataset = self._dataset(dataset_id)

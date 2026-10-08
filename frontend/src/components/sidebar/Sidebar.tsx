@@ -9,7 +9,7 @@ import { useSidebar } from "./useSidebar"
 
 export function Sidebar() {
   const { store, loading, pickFolder, scanPath, loadDataset } = useSidebar()
-  const indexing = useIndexingPoll()
+  const { progress: indexing, features } = useIndexingPoll()
   const folderName = store.currentDirectory.split(/[\\/]/).filter(Boolean).pop()
 
   if (!store.sidebarOpen) return null
@@ -66,6 +66,7 @@ export function Sidebar() {
         selectedId={store.selectedDatasetId}
         onSelect={store.selectDataset}
         indexing={indexing}
+        features={features}
         grow={store.folderCollapsed}
       />
     </aside>

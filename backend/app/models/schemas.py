@@ -156,6 +156,15 @@ class BrowseCopyStatus(BaseModel):
     error: Optional[str] = None
 
 
+FeatureState = Literal["not_needed", "missing", "building", "ready", "error"]
+
+
+class DatasetFeatures(BaseModel):
+    """Whether a dataset has its search index and browse copy (`not_needed` for files that work fast without)."""
+    search: FeatureState
+    browse: FeatureState
+
+
 class SearchResponse(BaseModel):
     results: List[SearchResult]
     total: int

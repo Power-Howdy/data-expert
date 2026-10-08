@@ -1,7 +1,7 @@
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import type { Dataset, SearchIndexStatus } from "@/types"
+import type { Dataset, DatasetFeatures, SearchIndexStatus } from "@/types"
 import { LoadedDatasetItem } from "./LoadedDatasetItem"
 
 interface LoadedDatasetsListProps {
@@ -10,11 +10,13 @@ interface LoadedDatasetsListProps {
   onSelect: (id: string) => void
   /** Search-index progress by dataset id. */
   indexing?: Record<string, SearchIndexStatus>
+  /** Search index and browse copy state by dataset id. */
+  features?: Record<string, DatasetFeatures>
   /** Fill the remaining height instead of a short fixed list. */
   grow?: boolean
 }
 
-export function LoadedDatasetsList({ datasets, selectedId, onSelect, indexing = {}, grow }: LoadedDatasetsListProps) {
+export function LoadedDatasetsList({ datasets, selectedId, onSelect, indexing = {}, features = {}, grow }: LoadedDatasetsListProps) {
   return (
     <div className={cn("flex flex-col bg-muted/30 p-3", grow ? "min-h-0 flex-1" : "border-t-2 border-border")}>
       <div className="mb-2 flex items-center justify-between px-1">
@@ -34,6 +36,7 @@ export function LoadedDatasetsList({ datasets, selectedId, onSelect, indexing = 
               <li key={dataset.id}>
                 <LoadedDatasetItem
                   dataset={dataset} selected={selectedId === dataset.id} indexing={indexing[dataset.id]}
+                  features={features[dataset.id]}
                   onSelect={() => onSelect(dataset.id)}
                 />
               </li>

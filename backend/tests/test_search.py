@@ -34,6 +34,7 @@ def ids(response):
 
 def test_scan_matches_all_terms_nested_values_and_pending_edits(setup):
     ds, search = setup
+    assert search.state(ds) == "not_needed"
     found = search.search(ds.id, SearchRequest(query="plant"))
     assert found.mode == "scan" and ids(found) == ["0", "2"] and found.total == 2
     assert found.results[0].data["views"] == 10
@@ -62,9 +63,11 @@ def wait_ready(search, dataset_id):
 
 def test_large_files_use_a_background_index(setup, indexed):
     ds, search = setup
+    assert search.state(ds) == "missing"
     first = search.search(ds.id, SearchRequest(query="photosynthesis"))
     assert first.mode == "index" and first.index.state in ("building", "ready")
     wait_ready(search, ds.id)
+    assert search.state(ds) == "ready"
 
     found = search.search(ds.id, SearchRequest(query="photosynthesis"))
     assert ids(found) == ["0"] and found.results[0].data["meta"] == {"topic": "plants"} and found.total_exact

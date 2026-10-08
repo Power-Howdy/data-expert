@@ -27,7 +27,7 @@ from app.models.version_schemas import CommitRequest, VersionCommit
 from app.models.schemas import (
     Dataset, LoadDatasetRequest, ScanRequest, ScanResponse,
     PaginationParams, FilterParams, SortParams, FilterRequest, SortRequest,
-    SearchRequest, SearchResponse, SearchIndexStatus, BrowseCopyStatus, RowsResponse, RowData,
+    SearchRequest, SearchResponse, SearchIndexStatus, BrowseCopyStatus, DatasetFeatures, RowsResponse, RowData,
     AddRowRequest, UpdateRowRequest, ReplaceRequest, TransformRequest,
     CombineRequest, SeparateRequest, ExportRequest,
     DatasetProfile, AnalyticsOverview, ErrorResponse, SuccessResponse,
@@ -123,6 +123,15 @@ def scan_directory(request: ScanRequest):
 async def list_datasets():
     """List all loaded datasets."""
     return dataset_manager.list_datasets()
+
+
+@app.get("/api/datasets/features", response_model=Dict[str, DatasetFeatures])
+def dataset_features():
+    """Search index and browse copy state of every loaded dataset, by id (for sidebar badges)."""
+    return {
+        d.id: DatasetFeatures(search=search_engine.state(d), browse=browse_copies.state(d))
+        for d in dataset_manager.list_datasets()
+    }
 
 
 @app.get("/api/datasets/{dataset_id}", response_model=Dataset)

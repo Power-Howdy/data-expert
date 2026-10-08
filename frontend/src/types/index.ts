@@ -111,6 +111,15 @@ export interface SearchIndexStatus {
   error: string | null
 }
 
+/** `not_needed`: the file is fast without it (small enough to scan, or pages already quick). */
+export type FeatureState = "not_needed" | "missing" | "building" | "ready" | "error"
+
+/** Search index and browse copy state of a loaded dataset. */
+export interface DatasetFeatures {
+  search: FeatureState
+  browse: FeatureState
+}
+
 /** A copy of the file with small row groups, so any page loads quickly. */
 export interface BrowseCopyStatus {
   state: "missing" | "building" | "ready" | "error"

@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Open-source project files: license, contributing guide, code of conduct, security policy, issue and pull
   request templates, and CI.
 - Documentation under `docs/`.
+- Sidebar badges: loaded datasets show icons for whether they are indexed for searching and optimized for
+  browsing (`GET /api/datasets/features`).
 - **Optimize for browsing**: for large files whose deep pages load slowly (Parquet written as huge row groups,
   or big CSV/JSON files), the Browse tab offers to build a copy with small row groups in the background. With it,
   any page of a 3 GB, 1M-row file loads in under 0.15 s (down from 1–2 s). The copy is rebuilt after saving and

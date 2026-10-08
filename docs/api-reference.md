@@ -82,6 +82,12 @@ Prefix: `/api/datasets/{id}/versions`. A `{ref}` is a commit id, a unique prefix
 | GET | `/api/datasets/{id}/search/status` | Index status: `state`, `indexed`, `total`, `size_bytes`, `error` |
 | POST | `/api/datasets/{id}/search/index` | Start building the index |
 | GET | `/api/search/indexing` | Builds in progress (or failed), by dataset id |
+## Dataset features
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/datasets/features` | `{dataset id: {"search", "browse"}}` for every loaded dataset; each is `not_needed`, `missing`, `building`, `ready` or `error`. Cheap (no sizes measured); the sidebar polls it for its badges |
+
 ## Browse copy
 
 An optional copy of a large file with small row groups, so every page loads quickly. See

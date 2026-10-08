@@ -22,6 +22,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
       "The folder tree lists supported files: Parquet, CSV, TSV, JSON, JSON Lines, JSON.gz, Feather, Avro, ORC and Excel.",
       "Click a file to load it. Loaded datasets appear under Loaded; click one to work with it.",
       "Fold the Data folder section with its header to give the Loaded list more room.",
+      "Large datasets under Loaded show two small icons: a magnifier when the file is indexed for searching and a lightning bolt when it is optimized for browsing. Faded means not yet; hover an icon for details. Small files don't need either, so they show none.",
       "Files are read lazily, so even multi-gigabyte files open quickly.",
     ],
   },

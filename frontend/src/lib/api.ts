@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosError } from "axios"
 import toast from "react-hot-toast"
-import type { BrowseCopyStatus, SearchIndexStatus, SearchResponse } from "@/types"
+import type { BrowseCopyStatus, DatasetFeatures, SearchIndexStatus, SearchResponse } from "@/types"
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api"
 
@@ -124,6 +124,11 @@ class ApiClient {
 
   async buildSearchIndex(id: string) {
     const { data } = await this.client.post(`/datasets/${id}/search/index`)
+    return data
+  }
+
+  async getDatasetFeatures(): Promise<Record<string, DatasetFeatures>> {
+    const { data } = await this.client.get("/datasets/features", { silent: true } as object)
     return data
   }
 

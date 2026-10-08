@@ -27,6 +27,7 @@ def isolated(tmp_path, monkeypatch):
     monkeypatch.setattr(dataset_manager, "dataframes", {})
     monkeypatch.setattr(dataset_manager, "options", {})
     monkeypatch.setattr(browse_copies, "base", tmp_path / "copies")
+    monkeypatch.setattr(browse_copies, "_needed", {})
     monkeypatch.setattr(module, "BROWSE_GROUP_ROWS", 1_000)
 
 
@@ -54,6 +55,7 @@ def test_needed_only_for_huge_row_groups(tmp_path, monkeypatch):
     ds = load(tmp_path)
     assert browse_copies.status(ds.id).needed is False
     monkeypatch.setattr(module, "SLOW_GROUP_BYTES", 1_000)
+    browse_copies._needed.clear()
     assert browse_copies.status(ds.id).needed is True
 
 
@@ -87,6 +89,17 @@ def test_commit_rebuilds_the_copy_for_the_new_version(tmp_path):
     new = browse_copies.ready_path(ds)
     assert new != old and not (tmp_path / old).exists()
     assert engine.get_row(ds.id, "4321").data["text"] == "edited"
+
+
+def test_state_for_badges(tmp_path, monkeypatch):
+    ds = load(tmp_path)
+    assert browse_copies.state(ds) == "not_needed"
+    monkeypatch.setattr(module, "SLOW_GROUP_BYTES", 1_000)
+    browse_copies._needed.clear()
+    assert browse_copies.state(ds) == "missing"
+    browse_copies.build(ds.id)
+    wait_ready(ds.id)
+    assert browse_copies.state(ds) == "ready"
 
 
 def test_delete_removes_the_copy(tmp_path):
