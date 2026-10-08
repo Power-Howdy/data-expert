@@ -1,44 +1,60 @@
-# Core Framework
-fastapi==0.111.0
-uvicorn[standard]==0.30.1
-pydantic==2.7.4
-pydantic-settings==2.3.3
-python-multipart==0.0.9
-sse-starlette==2.1.2
-
-# Data Processing
-polars==1.7.0
-pyarrow==16.1.0
-pandas==2.2.2
-numpy==1.26.4
-
-# File Formats
-fastparquet==2024.5.0
-python-snappy==0.7.1
-zstandard==0.23.0
+annotated-doc==0.0.5
+annotated-types==0.8.0
+anyio==4.15.1
+ast_serialize==0.12.1
+certifi==2026.7.22
+click==8.5.0
+cloudpickle==3.1.2
+colorama==0.4.6
+cramjam==2.13.0
+et_xmlfile==2.0.0
+fastapi==0.142.4
+fastparquet==2026.9.0
+fsspec==2026.9.0
+h11==0.16.0
+httpcore==1.0.9
+httpx==0.28.1
+idna==3.20
+iniconfig==2.3.1
+joblib==1.6.0
+librt==0.16.0
+mypy==2.4.0
+mypy_extensions==1.1.0
+narwhals==2.26.0
+numpy==2.5.3
 openpyxl==3.1.5
-xlrd==2.0.1
-
-# Search
-tantivy==0.20.1
-
-# Config
-pyyaml==6.0.1
-
-# Utilities
-python-dotenv==1.0.1
-tqdm==4.66.4
-xxhash==3.4.1
-
-# Analytics
-scipy==1.13.0
-scikit-learn==1.4.2
-
-# Testing
-pytest==8.2.2
-pytest-asyncio==0.23.3
-httpx==0.27.0
-
-# Type Checking
-mypy==1.10.0
-types-pyyaml==6.0.12.12
+opentelemetry-api==1.45.1
+packaging==26.3
+pandas==3.0.6
+pathspec==1.1.1
+pluggy==1.6.0
+polars==2.0.0
+polars-runtime-32==2.0.0
+pyarrow==25.0.1
+pydantic==2.13.5
+pydantic-settings==2.15.0
+pydantic_core==2.46.5
+Pygments==2.21.0
+pytest==9.1.1
+pytest-asyncio==1.4.0
+python-dateutil==2.9.0.post0
+python-dotenv==1.2.4
+python-multipart==0.0.32
+python-snappy==0.7.3
+PyYAML==6.0.3
+scikit-learn==1.9.1
+scipy==1.18.1
+six==1.17.0
+sse-starlette==3.5.0
+starlette==1.7.0
+tantivy==0.26.2
+threadpoolctl==3.7.0
+tqdm==4.70.1
+types-PyYAML==6.0.12.20260906
+typing-inspection==0.4.4
+typing_extensions==4.16.0
+tzdata==2026.5
+uvicorn==0.54.0
+xlrd==2.0.2
+xxhash==4.0.1
+zstandard==0.25.0
