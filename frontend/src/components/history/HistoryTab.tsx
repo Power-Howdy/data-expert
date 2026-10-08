@@ -26,12 +26,16 @@ export function HistoryTab() {
   }
   if (history && !history.tracking) {
     return (
-      <EmptyState icon={<GitBranch className="h-9 w-9" />} title="No versions yet">
-        Every “Save to file” becomes a version you can view, compare and restore. Tracking starts automatically on the first
-        save, or now:
-        <LoadingButton className="mt-4" onClick={versions.start} loading={versions.busy === "start"} loadingText="Starting...">
-          Start tracking
-        </LoadingButton>
+      <EmptyState
+        icon={<GitBranch className="h-9 w-9" />} title="No versions yet"
+        action={
+          <LoadingButton onClick={versions.start} loading={versions.busy === "start"} loadingText="Starting...">
+            Start tracking
+          </LoadingButton>
+        }
+      >
+        Every “Save to file” becomes a version you can view, compare and restore. Tracking starts automatically on your
+        first save, or you can start it now.
       </EmptyState>
     )
   }

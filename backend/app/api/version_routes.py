@@ -60,6 +60,7 @@ def restore_version(dataset_id: str, ref: str):
     _require(dataset_id)
     if manipulation_engine.has_changes(dataset_id):
         raise HTTPException(status_code=409, detail="Save or discard your pending changes before restoring a version")
+    search_engine.delete_index(dataset_id)
     commit = _call(version_control.restore, dataset_id, ref)
     view_store.drop_dataset(dataset_id)
     search_engine.delete_index(dataset_id)

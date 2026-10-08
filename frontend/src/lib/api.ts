@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosError } from "axios"
 import toast from "react-hot-toast"
+import type { SearchIndexStatus, SearchResponse } from "@/types"
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api"
 
@@ -101,11 +102,13 @@ class ApiClient {
   }
 
   // Search
-  async search(id: string, query: string, options?: any) {
-    const { data } = await this.client.post(`/datasets/${id}/search`, {
-      query,
-      ...options,
-    })
+  async search(id: string, query: string, options?: { limit?: number; offset?: number }): Promise<SearchResponse> {
+    const { data } = await this.client.post(`/datasets/${id}/search`, { query, ...options }, { timeout: 0 })
+    return data
+  }
+
+  async getSearchStatus(id: string): Promise<SearchIndexStatus> {
+    const { data } = await this.client.get(`/datasets/${id}/search/status`, { silent: true } as object)
     return data
   }
 

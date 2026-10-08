@@ -25,7 +25,7 @@ from app.models.version_schemas import CommitRequest, VersionCommit
 from app.models.schemas import (
     Dataset, LoadDatasetRequest, ScanRequest, ScanResponse,
     PaginationParams, FilterParams, SortParams, FilterRequest, SortRequest,
-    SearchRequest, SearchResponse, RowsResponse, RowData,
+    SearchRequest, SearchResponse, SearchIndexStatus, RowsResponse, RowData,
     AddRowRequest, UpdateRowRequest, ReplaceRequest, TransformRequest,
     CombineRequest, SeparateRequest, ExportRequest,
     DatasetProfile, AnalyticsOverview, ErrorResponse, SuccessResponse,
@@ -218,14 +218,15 @@ async def stream_rows(
 
 @app.post("/api/datasets/{dataset_id}/search", response_model=SearchResponse)
 def search_dataset(dataset_id: str, request: SearchRequest):
-    """Full-text search in dataset."""
-    dataset = get_dataset(dataset_id)
-    request.dataset_id = dataset_id
-    
-    try:
-        return search_engine.search(request)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    """Full-text search. For large files the first search starts building an index; `index` reports its progress."""
+    get_dataset(dataset_id)
+    return _edit(search_engine.search, dataset_id, request)
+
+
+@app.get("/api/datasets/{dataset_id}/search/status", response_model=SearchIndexStatus)
+def search_index_status(dataset_id: str):
+    get_dataset(dataset_id)
+    return _edit(search_engine.status, dataset_id)
 
 
 @app.get("/api/datasets/{dataset_id}/search/suggest")
@@ -239,15 +240,11 @@ def search_suggest(dataset_id: str, q: str = Query(...), limit: int = Query(10))
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.post("/api/datasets/{dataset_id}/search/index")
+@app.post("/api/datasets/{dataset_id}/search/index", response_model=SearchIndexStatus)
 def build_search_index(dataset_id: str):
-    """Build search index for dataset."""
-    dataset = get_dataset(dataset_id)
-    try:
-        result = search_engine.build_index(dataset_id)
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    """Start building the search index in the background."""
+    get_dataset(dataset_id)
+    return _edit(search_engine.build_index, dataset_id)
 
 
 # ==================== Analytics ====================
@@ -391,6 +388,7 @@ def undo_change(dataset_id: str):
 def commit_changes(dataset_id: str, request: Optional[CommitRequest] = None):
     """Write pending edits to the dataset's file as a new version."""
     get_dataset(dataset_id)
+    search_engine.delete_index(dataset_id)
     commit = _edit(manipulation_engine.commit_changes, dataset_id, request.message if request else "")
     view_store.drop_dataset(dataset_id)
     search_engine.delete_index(dataset_id)

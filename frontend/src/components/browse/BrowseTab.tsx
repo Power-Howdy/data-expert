@@ -6,6 +6,8 @@ import { PageHeader } from "@/components/common/PageHeader"
 import { useSelectedDataset } from "@/hooks/useSelectedDataset"
 import { formatNumber } from "@/lib/utils"
 import { useBrowseData } from "./useBrowseData"
+import { useSearch } from "./useSearch"
+import { SearchStatus } from "./SearchStatus"
 import { useDatasetColumns } from "./useDatasetColumns"
 import { useAITransform } from "./useAITransform"
 import { FilterPanel } from "./FilterPanel"
@@ -23,10 +25,11 @@ export function BrowseTab() {
   const schema = ai.view?.schema ?? dataset?.schema
   const columns = useDatasetColumns(schema)
   const data = useBrowseData(dataset, ai.view)
+  const search = useSearch(dataset?.id)
   const [showFilters, setShowFilters] = React.useState(false)
   const [showAI, setShowAI] = React.useState(false)
   const [dialog, setDialog] = React.useState<BrowseDialog>(null)
-  const showingSearch = !ai.view && data.searchResults.length > 0
+  const showingSearch = !ai.view && search.searched !== null
   const editable = !ai.view && !showingSearch
 
   if (!dataset || !schema) {
@@ -44,7 +47,7 @@ export function BrowseTab() {
         subtitle={`${formatNumber(dataset.row_count)} rows · ${dataset.schema.length} columns · ${dataset.format}`}
         actions={
           <BrowseActions
-            onSearch={ai.view ? undefined : data.search} searchLoading={data.searchLoading}
+            onSearch={ai.view ? undefined : search.search} searchLoading={search.loading}
             filterCount={data.filters.length} onToggleFilters={() => setShowFilters(!showFilters)}
             aiOpen={showAI} onToggleAI={() => setShowAI(!showAI)}
             onSave={() => setDialog("save")}
@@ -55,8 +58,8 @@ export function BrowseTab() {
       />
       {!ai.view && (
         <Input
-          placeholder="Search across rows..." value={data.searchQuery} className="max-w-md"
-          onChange={(e) => data.setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && data.search()}
+          placeholder="Search across rows..." value={search.query} className="max-w-md"
+          onChange={(e) => search.setQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && search.search()}
         />
       )}
       <div className="shrink-0 space-y-5 empty:hidden">
@@ -67,14 +70,15 @@ export function BrowseTab() {
       </div>
       <Separator />
       {showingSearch && (
-        <div className="-mb-3 text-xs font-extrabold uppercase tracking-wide text-muted-foreground">
-          Showing {data.searchResults.length} search results
-        </div>
+        <SearchStatus
+          query={search.searched ?? ""} shown={search.results.length} total={search.total}
+          indexing={search.indexing} onClear={search.clear}
+        />
       )}
       <div className="min-h-[320px] flex-1">
         <BrowseTable
-          columns={columns} rows={showingSearch ? data.searchResults : data.rows} schema={schema}
-          loading={data.loading} rowOffset={showingSearch ? 0 : data.page * data.pageSize}
+          columns={columns} rows={showingSearch ? search.results : data.rows} schema={schema}
+          loading={showingSearch ? search.loading || search.indexing?.state === "building" : data.loading} rowOffset={showingSearch ? 0 : data.page * data.pageSize}
           datasetId={editable ? dataset.id : undefined}
         />
       </div>

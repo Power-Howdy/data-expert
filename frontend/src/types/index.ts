@@ -103,10 +103,21 @@ export interface SearchResult {
   data: Record<string, any>
 }
 
+export interface SearchIndexStatus {
+  state: "missing" | "building" | "ready" | "error"
+  indexed: number
+  total: number
+  size_bytes: number
+  error: string | null
+}
+
 export interface SearchResponse {
   results: SearchResult[]
   total: number
   took_ms: number
+  mode: "scan" | "index"
+  /** Set for large files, which are searched through an index. */
+  index: SearchIndexStatus | null
 }
 
 export interface AnalyticsOverview {

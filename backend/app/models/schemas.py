@@ -138,10 +138,20 @@ class SearchResult(BaseModel):
     data: Dict[str, Any]
 
 
+class SearchIndexStatus(BaseModel):
+    state: Literal["missing", "building", "ready", "error"]
+    indexed: int = 0
+    total: int = 0
+    size_bytes: int = 0
+    error: Optional[str] = None
+
+
 class SearchResponse(BaseModel):
     results: List[SearchResult]
     total: int
     took_ms: float
+    mode: Literal["scan", "index"] = "scan"
+    index: Optional[SearchIndexStatus] = Field(None, description="Set for large files, which are searched through an index")
 
 
 class RowData(BaseModel):

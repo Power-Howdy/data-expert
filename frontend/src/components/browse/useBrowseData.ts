@@ -15,9 +15,6 @@ export function useBrowseData(dataset: Dataset | undefined, view: DataView | nul
   const [pageSize, setPageSize] = React.useState(100)
   const [filters, setFilters] = React.useState<ColumnFilter[]>([])
   const [sorts] = React.useState<SortParams[]>([])
-  const [searchQuery, setSearchQuery] = React.useState("")
-  const [searchResults, setSearchResults] = React.useState<RowData[]>([])
-  const [searchLoading, setSearchLoading] = React.useState(false)
   const requestId = React.useRef(0)
   const datasetId = dataset?.id
   const viewId = view?.id
@@ -30,7 +27,6 @@ export function useBrowseData(dataset: Dataset | undefined, view: DataView | nul
     setRows([])
     setPage(0)
     clearFilters()
-    setSearchResults([])
   }, [viewId])
 
   React.useEffect(() => {
@@ -38,8 +34,6 @@ export function useBrowseData(dataset: Dataset | undefined, view: DataView | nul
     setTotal(dataset?.row_count ?? 0)
     setPage(0)
     clearFilters()
-    setSearchQuery("")
-    setSearchResults([])
     if (datasetId) refreshChanges(datasetId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasetId])
@@ -61,19 +55,6 @@ export function useBrowseData(dataset: Dataset | undefined, view: DataView | nul
       .finally(() => id === requestId.current && setLoading(false))
   }, [datasetId, viewId, page, pageSize, filters, sorts, version])
 
-  const search = async () => {
-    if (!dataset || !searchQuery.trim()) return
-    setSearchLoading(true)
-    try {
-      const result = await api.search(dataset.id, searchQuery, { limit: 100 })
-      setSearchResults(result.results.map((r: { row_id: string; data: Record<string, any> }) => ({ id: r.row_id, data: r.data })))
-    } catch (error) {
-      toast.error("Search failed")
-    } finally {
-      setSearchLoading(false)
-    }
-  }
-
   const changePageSize = (size: number) => {
     setPageSize(size)
     setPage(0)
@@ -84,16 +65,10 @@ export function useBrowseData(dataset: Dataset | undefined, view: DataView | nul
     setPage(0)
   }
 
-  const changeSearchQuery = (value: string) => {
-    setSearchQuery(value)
-    if (!value.trim()) setSearchResults([])
-  }
-
   const pageCount = Math.max(1, Math.ceil(total / pageSize))
 
   return {
     rows, total, loading, page, setPage, pageCount, pageSize, changePageSize,
     filters, setFilters: changeFilters,
-    searchQuery, setSearchQuery: changeSearchQuery, searchResults, searchLoading, search,
   }
 }

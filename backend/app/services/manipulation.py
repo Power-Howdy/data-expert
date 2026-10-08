@@ -49,6 +49,10 @@ class DataManipulationEngine:
             ops = list(self._ops.get(dataset_id, []))
         return apply_changes(self._source(dataset_id), ops) if ops else with_index(self._source(dataset_id))
 
+    def pending_ops(self, dataset_id: str) -> List[Dict[str, Any]]:
+        with self._lock:
+            return list(self._ops.get(dataset_id, []))
+
     def has_changes(self, dataset_id: str) -> bool:
         return bool(self._ops.get(dataset_id))
 
