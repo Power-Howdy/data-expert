@@ -138,6 +138,7 @@ async def unload_dataset(dataset_id: str):
     success = dataset_manager.unload_dataset(dataset_id)
     if not success:
         raise HTTPException(status_code=404, detail=f"Dataset {dataset_id} not found")
+    analytics_engine.forget_profile(dataset_id)
     return SuccessResponse(message=f"Dataset {dataset_id} unloaded")
 
 
@@ -252,13 +253,24 @@ def get_stats(dataset_id: str):
 
 
 @app.get("/api/datasets/{dataset_id}/profile", response_model=DatasetProfile)
-def get_profile(dataset_id: str, sample_size: Optional[int] = Query(None)):
-    """Get full dataset profile."""
+def get_profile(
+    dataset_id: str,
+    sample_size: Optional[int] = Query(None),
+    refresh: bool = Query(False),
+):
+    """Get the saved dataset profile, generating it if missing or when refresh=true."""
     dataset = get_dataset(dataset_id)
     try:
-        return analytics_engine.profile_dataset(dataset_id, sample_size)
+        return analytics_engine.profile_dataset(dataset_id, sample_size, refresh)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/datasets/{dataset_id}/profile/saved", response_model=Optional[DatasetProfile])
+def get_saved_profile(dataset_id: str):
+    """Get the previously generated profile without computing a new one (null if none)."""
+    get_dataset(dataset_id)
+    return analytics_engine.get_saved_profile(dataset_id)
 
 
 @app.get("/api/datasets/{dataset_id}/distributions/{column}")

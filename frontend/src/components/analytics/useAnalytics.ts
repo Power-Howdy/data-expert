@@ -13,10 +13,13 @@ export function useAnalytics(dataset: Dataset | undefined) {
   const [outliers, setOutliers] = React.useState<any>(null)
 
   const datasetId = dataset?.id
+  const latestId = React.useRef(datasetId)
+  latestId.current = datasetId
 
   React.useEffect(() => {
     setOverview(null)
     setProfile(null)
+    setProfileLoading(false)
     setActiveColumn(null)
     if (!datasetId) return
     let cancelled = false
@@ -25,16 +28,21 @@ export function useAnalytics(dataset: Dataset | undefined) {
       .then((data) => !cancelled && setOverview(data))
       .catch(() => !cancelled && toast.error("Failed to load overview"))
       .finally(() => !cancelled && setLoading(false))
+    api.getSavedProfile(datasetId)
+      .then((data) => !cancelled && data && setProfile(data))
+      .catch(() => {})
     return () => { cancelled = true }
   }, [datasetId])
 
   const loadProfile = async () => {
-    if (!dataset) return
+    if (!datasetId) return
+    const id = datasetId
     setProfileLoading(true)
     try {
-      setProfile(await api.getProfile(dataset.id))
+      const data = await api.getProfile(id, { refresh: profile !== null })
+      if (id === latestId.current) setProfile(data)
     } catch (error) {
-      toast.error("Failed to load profile")
+      toast.error("Failed to generate profile")
     } finally {
       setProfileLoading(false)
     }

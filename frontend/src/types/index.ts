@@ -148,6 +148,8 @@ export interface DatasetProfile {
   columns: ColumnProfile[]
   correlations?: Record<string, Record<string, number>>
   missing_matrix?: Record<string, Record<string, number>>
+  generated_at?: string
+  sampled?: boolean
 }
 
 export interface CombineRequest {

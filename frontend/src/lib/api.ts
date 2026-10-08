@@ -127,9 +127,17 @@ class ApiClient {
     return data
   }
 
-  async getProfile(id: string, sampleSize?: number) {
-    const params = sampleSize ? { sample_size: sampleSize } : {}
+  async getProfile(id: string, options: { refresh?: boolean; sampleSize?: number } = {}) {
+    const params = {
+      ...(options.refresh ? { refresh: true } : {}),
+      ...(options.sampleSize ? { sample_size: options.sampleSize } : {}),
+    }
     const { data } = await this.client.get(`/datasets/${id}/profile`, { params })
+    return data
+  }
+
+  async getSavedProfile(id: string) {
+    const { data } = await this.client.get(`/datasets/${id}/profile/saved`)
     return data
   }
 

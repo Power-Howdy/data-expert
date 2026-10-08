@@ -9,6 +9,7 @@ from app.models.schemas import (
     DataType, Dataset
 )
 from app.services.data_loader import dataset_manager
+from app.services.profile_store import dataset_fingerprint, profile_store
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,7 @@ class AnalyticsEngine:
     """Compute analytics and statistics for datasets."""
     
     def __init__(self):
-        self._cache: Dict[str, DatasetProfile] = {}
+        self._cache: Dict[str, Tuple[str, DatasetProfile]] = {}
     
     def get_overview(self, dataset_id: str) -> AnalyticsOverview:
         """Get high-level dataset overview."""
@@ -84,12 +85,33 @@ class AnalyticsEngine:
             column_types=column_types
         )
     
-    def profile_dataset(self, dataset_id: str, sample_size: Optional[int] = None) -> DatasetProfile:
-        """Generate dataset profile; large datasets are sampled by default."""
+    def get_saved_profile(self, dataset_id: str) -> Optional[DatasetProfile]:
+        """Return the stored profile if it still matches the dataset's current data."""
+        dataset = dataset_manager.get_dataset(dataset_id)
+        if not dataset:
+            raise ValueError(f"Dataset {dataset_id} not found")
+        fingerprint = dataset_fingerprint(dataset)
+        cached = self._cache.get(dataset_id)
+        if cached and cached[0] == fingerprint:
+            return cached[1]
+        profile = profile_store.load(dataset)
+        if profile:
+            self._cache[dataset_id] = (fingerprint, profile)
+        return profile
+    
+    def forget_profile(self, dataset_id: str) -> None:
+        self._cache.pop(dataset_id, None)
+        profile_store.delete(dataset_id)
+    
+    def profile_dataset(
+        self, dataset_id: str, sample_size: Optional[int] = None, refresh: bool = False
+    ) -> DatasetProfile:
+        """Return the saved profile, or generate (and save) one; large datasets are sampled."""
+        if not refresh:
+            saved = self.get_saved_profile(dataset_id)
+            if saved:
+                return saved
         sample_size = sample_size or DEFAULT_PROFILE_SAMPLE
-        cache_key = f"{dataset_id}:{sample_size}"
-        if cache_key in self._cache:
-            return self._cache[cache_key]
         
         dataset = dataset_manager.get_dataset(dataset_id)
         if not dataset:
@@ -121,10 +143,12 @@ class AnalyticsEngine:
             memory_bytes=df.estimated_size(),
             columns=columns,
             correlations=correlations,
-            missing_matrix=missing_matrix
+            missing_matrix=missing_matrix,
+            sampled=dataset.row_count > sample_size,
         )
         
-        self._cache[cache_key] = profile
+        self._cache[dataset_id] = (dataset_fingerprint(dataset), profile)
+        profile_store.save(dataset, profile)
         return profile
     
     def _profile_column(self, df: pl.DataFrame, col_name: str, col_type: DataType) -> ColumnProfile:

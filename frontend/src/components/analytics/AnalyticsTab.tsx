@@ -4,10 +4,17 @@ import { LoadingButton } from "@/components/common/LoadingButton"
 import { PageHeader } from "@/components/common/PageHeader"
 import { useSelectedDataset } from "@/hooks/useSelectedDataset"
 import { formatNumber } from "@/lib/utils"
+import { DatasetProfile } from "@/types"
 import { useAnalytics } from "./useAnalytics"
 import { OverviewStats } from "./OverviewStats"
 import { ProfileTabs } from "./ProfileTabs"
 import { ColumnDetailPanel } from "./ColumnDetailPanel"
+
+function profileInfo(profile: DatasetProfile | null) {
+  if (!profile?.generated_at) return ""
+  const when = new Date(profile.generated_at).toLocaleString()
+  return `Profiled ${when}${profile.sampled ? ` (sample of ${formatNumber(profile.row_count)})` : ""}`
+}
 
 export function AnalyticsTab() {
   const dataset = useSelectedDataset()
@@ -25,10 +32,13 @@ export function AnalyticsTab() {
     <div className="flex h-full flex-col gap-5">
       <PageHeader
         title={`${dataset.name} Analytics`}
-        subtitle={`${formatNumber(dataset.row_count)} rows · ${dataset.schema.length} columns`}
+        subtitle={[
+          `${formatNumber(dataset.row_count)} rows · ${dataset.schema.length} columns`,
+          profileInfo(a.profile),
+        ].filter(Boolean).join(" · ")}
         actions={
           <LoadingButton onClick={a.loadProfile} loading={a.profileLoading} loadingText="Profiling...">
-            {a.profile ? "Refresh Profile" : "Generate Profile"}
+            {a.profile ? "Regenerate Profile" : "Generate Profile"}
           </LoadingButton>
         }
       />

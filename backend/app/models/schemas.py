@@ -226,6 +226,8 @@ class DatasetProfile(BaseModel):
     columns: List[ColumnProfile]
     correlations: Optional[Dict[str, Dict[str, float]]] = None
     missing_matrix: Optional[Dict[str, Dict[str, int]]] = None
+    generated_at: datetime = Field(default_factory=datetime.now)
+    sampled: bool = False
 
 
 class AnalyticsOverview(BaseModel):
