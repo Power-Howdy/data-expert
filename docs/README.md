@@ -25,6 +25,7 @@ Polars and a React frontend shows them in the browser.
 | [API reference](api-reference.md) | Every REST endpoint |
 | [Frontend guide](frontend.md) | Structure, state, component rules |
 | [Development](development.md) | Local setup, tests, code style, adding features |
+| [Libraries](libraries.md) | Notable libraries, versions, licenses and what each is used for |
 
 ## Project
 

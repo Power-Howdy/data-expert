@@ -112,6 +112,7 @@ Full instructions: [docs/getting-started.md](docs/getting-started.md).
 | [Architecture](docs/architecture.md) | Components and data flow |
 | [API reference](docs/api-reference.md) | REST endpoints |
 | [Development](docs/development.md) | Setup, tests, conventions |
+| [Libraries](docs/libraries.md) | Notable libraries and what they are used for |
 | [Troubleshooting](docs/troubleshooting.md) | Common problems |
 
 ## Tech stack
@@ -122,6 +123,8 @@ Full instructions: [docs/getting-started.md](docs/getting-started.md).
 | Polars, PyArrow | Tailwind CSS, Radix UI |
 | NumPy (search index) | zustand, TanStack Query/Table |
 | httpx (OpenAI-compatible LLM APIs) | Recharts, CodeMirror 6 |
+
+See [docs/libraries.md](docs/libraries.md) for every notable library, its version, what it does here and its license.
 
 ## Project structure
 

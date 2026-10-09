@@ -226,9 +226,7 @@ class DataLoader:
     
     def _read_excel_lazy(self, path: str, format: DataFormat, **options) -> pl.LazyFrame:
         """Read Excel file."""
-        sheet_name = options.get("sheet_name", 0)
-        df = pl.read_excel(path, sheet_name=sheet_name, **options)
-        return df.lazy()
+        return self._read_excel_eager(path, format, **options).lazy()
     
     def load_eager(self, path: str, format: Optional[DataFormat] = None, **options) -> pl.DataFrame:
         """Load data eagerly as DataFrame."""
@@ -295,9 +293,15 @@ class DataLoader:
         return pl.from_arrow(table)
     
     def _read_excel_eager(self, path: str, format: DataFormat, **options) -> pl.DataFrame:
-        """Read Excel file eagerly."""
-        sheet_name = options.get("sheet_name", 0)
-        return pl.read_excel(path, sheet_name=sheet_name, **options)
+        """Read Excel file eagerly (the first sheet unless sheet_name or sheet_id is given)."""
+        options = dict(options)
+        sheet = options.pop("sheet_name", None)
+        if isinstance(sheet, int):
+            options["sheet_id"] = sheet + 1
+        elif sheet:
+            options["sheet_name"] = sheet
+        options.setdefault("sheet_id", None if "sheet_name" in options else 1)
+        return pl.read_excel(path, **options)
     
     def get_schema(self, lf: pl.LazyFrame) -> List[ColumnSchema]:
         """Extract schema from LazyFrame."""

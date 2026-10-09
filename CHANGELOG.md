@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   live preview on the first 200 rows. Results open as a view like AI results (`/api/transform/*`).
 - Open-source project files: license, contributing guide, code of conduct, security policy, issue and pull
   request templates, and CI.
-- Documentation under `docs/`.
+- Documentation under `docs/`, including [a list of notable libraries](docs/libraries.md) linked from the README.
 - Sidebar badges: loaded datasets show icons for whether they are indexed for searching and optimized for
   browsing (`GET /api/datasets/features`).
 - **Optimize for browsing**: for large files whose deep pages load slowly (Parquet written as huge row groups,
@@ -24,6 +24,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed
 
 - `.gitignore` no longer excludes `package.json`, `package-lock.json` and `tsconfig*.json`.
+- Excel and Avro files could not be opened, and Excel export failed: `requirements.txt` now includes fastexcel,
+  XlsxWriter and fastavro, and Excel files open on the first sheet unless a sheet is chosen.
 - Column details showed an empty distribution for list, array and struct columns. List items are now counted
   (number lists get a histogram of their items), struct values are shown as JSON, and the counts are computed
   lazily.
