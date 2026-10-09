@@ -30,6 +30,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     id: "browse", title: "Browsing rows", icon: Table2, tab: "browse",
     intro: "The Browse tab shows the rows of the selected dataset, page by page.",
     points: [
+      "The column holding each row's main text (such as text, content or message) is shown first; the others keep their order.",
       "Click a row to open it in a side panel with every field, including nested lists and objects.",
       "Use Filters to keep only rows that match conditions on columns (equals, contains, greater than, empty, ...).",
       "Change the page size or move between pages at the bottom of the table.",
