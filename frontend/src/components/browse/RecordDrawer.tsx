@@ -7,6 +7,7 @@ import { ConfirmButton } from "@/components/common/ConfirmButton"
 import { LoadingButton } from "@/components/common/LoadingButton"
 import { ColumnSchema, RowData } from "@/types"
 import { RecordEditor } from "./RecordEditor"
+import { textFirst } from "./columnOrder"
 import { useRecordEditor } from "./useRecordEditor"
 
 interface RecordDrawerProps {
@@ -29,6 +30,7 @@ export function RecordDrawer({ record, schema, title = "Record", onClose, datase
     onSaved: (row) => (current ? (setCurrent(row), setEditing(false)) : onClose()),
     onDeleted: onClose,
   })
+  const fields = React.useMemo(() => textFirst(schema), [schema])
   const known = new Set(schema.map((c) => c.name))
   const extra = Object.keys(current?.data ?? {}).filter((key) => !known.has(key))
 
@@ -60,10 +62,10 @@ export function RecordDrawer({ record, schema, title = "Record", onClose, datase
       footer={footer}
     >
       {editing ? (
-        <RecordEditor editor={editor} schema={schema} />
+        <RecordEditor editor={editor} schema={fields} />
       ) : (
         <div className="space-y-3">
-          {schema.map((col) => (
+          {fields.map((col) => (
             <RecordField key={col.name} name={col.name} type={col.type} value={current?.data?.[col.name]} />
           ))}
           {extra.map((key) => (

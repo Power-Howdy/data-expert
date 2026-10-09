@@ -30,7 +30,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
-- The Browse table shows the main text column (`text`, `content`, `message`, ... or a `*_text` column) first.
+- The Browse table and the row panel show the main text column (`text`, `content`, `message`, ... or a `*_text`
+  column) first.
 - The search index for large files is now under 1/100 of the file instead of several times its size: 25 MB
   instead of 14.8 GB for a 3 GB, 1M-row Parquet file. It stores per-block n-gram fingerprints and a word list,
   and scans only the blocks that can match, so results are exactly those of a full scan (substring,
