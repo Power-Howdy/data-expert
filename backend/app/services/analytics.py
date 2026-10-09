@@ -303,15 +303,16 @@ class AnalyticsEngine:
             encoded = pl.struct(pl.col(column).alias("v")).struct.json_encode().str.slice(5).str.head(-1)
             values, note = values.select(encoded.alias(column)), note or "Values shown as JSON"
         elif dtype == pl.Binary or dtype == pl.Null:
-            return {"type": "bar", "values": [], "counts": [], "total_unique": 0, "note": "This column type cannot be charted"}
+            return {"type": "bar", "values": [], "counts": [], "total_unique": 0, "total": 0, "note": "This column type cannot be charted"}
 
         counts = values.group_by(column).len().sort("len", descending=True).head(50).collect()
-        total_unique = values.select(pl.col(column).n_unique()).collect().item()
+        totals = values.select(pl.col(column).n_unique().alias("unique"), pl.len().alias("total")).collect()
         return {
             "type": "bar",
             "values": [display_value(v if isinstance(v, (str, int, float, bool)) else str(v)) for v in counts[column].to_list()],
             "counts": counts["len"].to_list(),
-            "total_unique": total_unique,
+            "total_unique": totals["unique"].item(),
+            "total": totals["total"].item(),
             "note": note,
         }
     

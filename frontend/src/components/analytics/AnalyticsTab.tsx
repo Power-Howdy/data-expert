@@ -7,6 +7,7 @@ import { formatNumber } from "@/lib/utils"
 import { DatasetProfile } from "@/types"
 import { useAnalytics } from "./useAnalytics"
 import { OverviewStats } from "./OverviewStats"
+import { OverviewCharts } from "./OverviewCharts"
 import { ProfileTabs } from "./ProfileTabs"
 import { ColumnDetailPanel } from "./ColumnDetailPanel"
 
@@ -47,7 +48,12 @@ export function AnalyticsTab() {
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : (
-        a.overview && <OverviewStats overview={a.overview} />
+        a.overview && (
+          <>
+            <OverviewStats overview={a.overview} />
+            <OverviewCharts overview={a.overview} />
+          </>
+        )
       )}
       {a.profile && (
         <ProfileTabs profile={a.profile} activeColumn={a.activeColumn} onColumnClick={a.selectColumn} />
@@ -55,6 +61,7 @@ export function AnalyticsTab() {
       {a.activeColumn && (
         <ColumnDetailPanel
           column={a.activeColumn}
+          profile={a.profile?.columns.find((c) => c.name === a.activeColumn)}
           distribution={a.columnDist}
           outliers={a.outliers}
           onClose={a.closeColumn}

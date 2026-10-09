@@ -74,7 +74,7 @@ export function BrowseTab() {
       {showingSearch && (
         <SearchStatus
           query={search.searched ?? ""} shown={search.results.length} total={search.total} totalExact={search.totalExact}
-          indexing={search.indexing} onClear={search.clear}
+          tookMs={search.tookMs} indexing={search.indexing} onClear={search.clear}
         />
       )}
       <div className="min-h-[320px] flex-1">

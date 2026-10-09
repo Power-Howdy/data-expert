@@ -76,11 +76,14 @@ use **Clear search** to return to all rows.
 
 - Search ignores upper and lower case and looks inside nested values.
 - Files under 256 MB are scanned directly, and the results include your unsaved edits.
-- Larger files are searched through a small index (about 1/200 of the file) that is built once, in the
+- Larger files are searched through a small index (under 1/100 of the file) that is built once, in the
   background, on the first search. The ring in the sidebar shows progress, and results appear automatically when
   the index is ready. Matching is the same as for small files (any part of a value, ignoring case).
 - On large files, a count such as “1,234+” means counting stopped early to keep the search fast; there are at
-  least that many matches. A browse copy (**Optimize for browsing**) also makes searches in that file faster.
+  least that many matches.
+- For the fastest searches in a large file, also click **Optimize for browsing**. With the browse copy, a 3 GB,
+  1M-row file answers any search in under 2 seconds; without it, a file stored as one huge block can take 10–20
+  seconds for rare word combinations.
 - Click **Clear search** to return to all rows.
 
 How this works: [Search](search.md).
@@ -125,11 +128,20 @@ Details: [AI assistant](ai-assistant.md).
 
 The **Stats** tab profiles the selected dataset.
 
-- **Overview:** rows, columns, memory, missing values and duplicates.
-- **Columns:** type, null and unique counts, min/max/mean/median, top values and a distribution chart. Click a
-  column for details and outliers.
-- **Correlations:** a heatmap of numeric columns.
-- **Missing values:** a matrix of gaps across columns.
+Each figure uses the chart that suits it, and some have more than one:
+
+- **Overview:** rows, columns, memory, missing values and duplicates, with donuts for column types, completeness
+  and duplicate rows; a quality map plots every column by missing % against unique %, next to a ranking of the
+  most distinct columns.
+- **Column profiles:** type, null and unique counts and min/max/mean/median. Numeric columns get a distribution
+  curve and a box plot, columns with up to six distinct values (and booleans) a donut, and other columns a bar
+  chart of their top values. Click a column for details: numeric columns show a histogram, a cumulative share
+  curve and a box plot with the outlier fences, plus a scatter plot of the outliers; other columns show the most
+  common values ranked and a donut of their share.
+- **Correlations:** the strongest column pairs as a diverging bar chart (positive and negative), and a heatmap of
+  numeric columns.
+- **Missing values:** missing % per column, colored by severity, and a matrix of the gaps in columns that have
+  any.
 - **AI insights:** a written summary of the profile, optionally focused on a topic.
 
 Profiles of very large datasets are computed on a sample of 100,000 rows. Profiles and insights are cached and

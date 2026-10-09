@@ -1,10 +1,10 @@
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { EmptyState } from "@/components/common/EmptyState"
 import { DatasetProfile } from "@/types"
 import { ColumnProfileCard } from "./ColumnProfileCard"
-import { CorrelationHeatmap } from "./CorrelationHeatmap"
-import { MissingMatrix } from "./MissingMatrix"
+import { CorrelationsView } from "./CorrelationsView"
+import { MissingValuesView } from "./MissingValuesView"
+import { QualityOverview } from "./QualityOverview"
 import { AIInsightsPanel } from "./AIInsightsPanel"
 
 interface ProfileTabsProps {
@@ -14,18 +14,21 @@ interface ProfileTabsProps {
 }
 
 export function ProfileTabs({ profile, activeColumn, onColumnClick }: ProfileTabsProps) {
-  const columnNames = profile.columns.map((c) => c.name)
   return (
-    <Tabs defaultValue="columns" className="flex-1">
-      <TabsList className="grid w-full grid-cols-4">
+    <Tabs defaultValue="overview" className="flex-1">
+      <TabsList className="grid w-full grid-cols-5">
+        <TabsTrigger value="overview">Overview</TabsTrigger>
         <TabsTrigger value="columns">Column Profiles ({profile.columns.length})</TabsTrigger>
         <TabsTrigger value="correlations">Correlations</TabsTrigger>
         <TabsTrigger value="missing">Missing Values</TabsTrigger>
         <TabsTrigger value="insights">AI Insights</TabsTrigger>
       </TabsList>
+      <TabsContent value="overview" className="flex-1">
+        <QualityOverview columns={profile.columns} />
+      </TabsContent>
       <TabsContent value="columns" className="flex-1">
-        <ScrollArea className="h-full p-2">
-          <div className="space-y-4">
+        <div className="p-2">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             {profile.columns.map((col) => (
               <ColumnProfileCard
                 key={col.name}
@@ -35,17 +38,15 @@ export function ProfileTabs({ profile, activeColumn, onColumnClick }: ProfileTab
               />
             ))}
           </div>
-        </ScrollArea>
+        </div>
       </TabsContent>
       <TabsContent value="correlations" className="flex-1">
         {profile.correlations
-          ? <CorrelationHeatmap correlations={profile.correlations} columns={columnNames} />
-          : <EmptyState>No correlation data available</EmptyState>}
+          ? <CorrelationsView correlations={profile.correlations} />
+          : <EmptyState>Correlations need at least two numeric columns</EmptyState>}
       </TabsContent>
       <TabsContent value="missing" className="flex-1">
-        {profile.missing_matrix
-          ? <MissingMatrix matrix={profile.missing_matrix} columns={columnNames} />
-          : <EmptyState>No missing value data available</EmptyState>}
+        <MissingValuesView columns={profile.columns} matrix={profile.missing_matrix} />
       </TabsContent>
       <TabsContent value="insights" className="flex-1">
         <AIInsightsPanel datasetId={profile.dataset_id} />

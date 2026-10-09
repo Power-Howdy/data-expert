@@ -1,10 +1,9 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { SimpleBarChart, histogramToData } from "@/components/common/SimpleBarChart"
 import { cn, formatNumber, formatPercent } from "@/lib/utils"
 import { ColumnProfile } from "@/types"
+import { ColumnChart } from "./ColumnChart"
 import { ColumnSummary } from "./ColumnSummary"
-import { TopValuesList } from "./TopValuesList"
 
 interface ColumnProfileCardProps {
   column: ColumnProfile
@@ -13,9 +12,8 @@ interface ColumnProfileCardProps {
 }
 
 export function ColumnProfileCard({ column, onClick, active }: ColumnProfileCardProps) {
-  const hasTopValues = column.top_values && column.top_values.length > 0
   return (
-    <Card className={cn("cursor-pointer transition-all", active && "ring-2 ring-primary")} onClick={onClick}>
+    <Card className={cn("min-w-0 cursor-pointer overflow-hidden transition-all", active && "ring-2 ring-primary")} onClick={onClick}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="shrink-0">
@@ -32,12 +30,7 @@ export function ColumnProfileCard({ column, onClick, active }: ColumnProfileCard
           </div>
           <ColumnSummary column={column} />
         </div>
-        {column.histogram && (
-          <div className="mt-3 h-20">
-            <SimpleBarChart data={histogramToData(column.histogram.bins, column.histogram.bin_edges)} xKey="range" />
-          </div>
-        )}
-        {hasTopValues && !column.histogram && <TopValuesList values={column.top_values!} />}
+        <ColumnChart column={column} />
       </CardContent>
     </Card>
   )

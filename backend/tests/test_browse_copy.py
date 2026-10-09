@@ -1,7 +1,8 @@
-"""Browse copies: built on request with small row groups, used for paging, replaced when the file changes."""
+"""Browse copies: built on request as small Arrow batches, used for paging, replaced when the file changes."""
 import time
 
 import polars as pl
+import pyarrow.ipc as ipc
 import pyarrow.parquet as pq
 import pytest
 
@@ -65,15 +66,17 @@ def test_build_then_pages_come_from_the_copy(tmp_path, monkeypatch):
     status = wait_ready(ds.id)
     assert status.state == "ready" and status.size_bytes > 0
     copy = browse_copies.ready_path(ds)
-    meta = pq.ParquetFile(copy).metadata
-    assert meta.num_rows == ROWS and meta.row_group(0).num_rows == 1_000
+    reader = ipc.open_file(copy)
+    assert reader.num_record_batches == 6 and reader.get_batch(0).num_rows == 1_000
+    assert browse_copies.starts(copy) == [0, 1_000, 2_000, 3_000, 4_000, 5_000, ROWS]
 
     paths = []
-    original = row_cache.rows
-    monkeypatch.setattr(row_cache, "rows", lambda path, *a: paths.append(path) or original(path, *a))
-    page = engine.get_rows(ds.id, offset=4_200, limit=50)
+    original = browse_copies.rows
+    monkeypatch.setattr(browse_copies, "rows", lambda path, *a: paths.append(path) or original(path, *a))
+    monkeypatch.setattr(row_cache, "rows", lambda *a: pytest.fail("pages should come from the copy"))
+    page = engine.get_rows(ds.id, offset=3_980, limit=50)
     assert paths == [copy]
-    assert [r.data["n"] for r in page.rows] == list(range(4_200, 4_250))
+    assert [r.data["n"] for r in page.rows] == list(range(3_980, 4_030))
     assert engine.get_row(ds.id, "5499").data == DF.row(5_499, named=True)
 
 

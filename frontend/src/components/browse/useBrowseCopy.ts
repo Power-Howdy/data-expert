@@ -3,7 +3,6 @@ import { api } from "@/lib/api"
 import { useIndexingStore } from "@/stores/useIndexingStore"
 import type { BrowseCopyStatus, Dataset } from "@/types"
 
-const POLL_MS = 1500
 const DISMISSED_KEY = "dx-browse-copy-dismissed"
 
 function dismissedPaths(): string[] {
@@ -14,43 +13,29 @@ function dismissedPaths(): string[] {
   }
 }
 
-/** The dataset's optional browse copy (small row groups for fast paging): status, progress and actions. */
+/** The dataset's optional browse copy (small batches for fast paging): status, progress and actions. Build
+ * progress is polled by the indexing store. */
 export function useBrowseCopy(dataset: Dataset | undefined) {
-  const [status, setStatus] = React.useState<BrowseCopyStatus | null>(null)
-  const [busy, setBusy] = React.useState(false)
-  const [dismissed, setDismissed] = React.useState(false)
   const id = dataset?.id
   const path = dataset?.path
+  const status = useIndexingStore((s) => (id ? s.browse[id] ?? null : null))
+  const [busy, setBusy] = React.useState(false)
+  const [dismissed, setDismissed] = React.useState(false)
 
   React.useEffect(() => {
-    setStatus(null)
     setDismissed(!!path && dismissedPaths().includes(path))
-    if (!id) return
-    let active = true
-    api.getBrowseCopy(id).then((s) => active && setStatus(s)).catch(() => undefined)
-    return () => {
-      active = false
-    }
+    if (id) useIndexingStore.getState().refresh(id, ["browse"])
   }, [id, path, dataset?.last_modified])
-
-  React.useEffect(() => {
-    if (!id || status?.state !== "building") return
-    const timer = window.setInterval(() => {
-      api.getBrowseCopy(id).then(setStatus).catch(() => setStatus(null))
-    }, POLL_MS)
-    return () => window.clearInterval(timer)
-  }, [id, status?.state])
 
   const run = async (action: (datasetId: string) => Promise<BrowseCopyStatus>) => {
     if (!id) return
     setBusy(true)
     try {
-      setStatus(await action(id))
+      useIndexingStore.getState().applyBrowse(id, await action(id))
     } catch {
       // the API client shows the error
     } finally {
       setBusy(false)
-      useIndexingStore.getState().refresh()
     }
   }
 

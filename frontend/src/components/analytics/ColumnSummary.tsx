@@ -18,7 +18,7 @@ export function ColumnSummary({ column }: { column: ColumnProfile }) {
     const top = column.top_values[0]
     return (
       <p
-        className="line-clamp-2 min-w-0 flex-1 break-words text-right text-sm text-muted-foreground"
+        className="line-clamp-2 min-w-0 flex-1 break-all text-right text-sm text-muted-foreground"
         title={String(top.value)}
       >
         Top: {String(top.value)} ({top.count})

@@ -88,7 +88,7 @@ class DataManipulationEngine:
             return lf.slice(offset, limit).collect()
         copy = browse_copies.ready_path(dataset)
         if copy:
-            return row_cache.rows(copy, pl.scan_parquet(copy), True, offset, limit, total)
+            return browse_copies.rows(copy, offset, limit)
         return row_cache.rows(dataset.path, lf, dataset.format == DataFormat.PARQUET, offset, limit, total)
 
     @staticmethod

@@ -51,6 +51,7 @@ def indexed(monkeypatch):
     monkeypatch.setattr(search_module, "SCAN_LIMIT_BYTES", 0)
     monkeypatch.setattr(search_module, "MIN_BLOCK_ROWS", 10)
     monkeypatch.setattr(search_module, "DATA_PER_FINGERPRINT", 0)
+    monkeypatch.setattr(search_module, "INDEX_RATIO", 1e-9)
 
 
 def wait_ready(search, dataset_id):
@@ -93,7 +94,7 @@ def test_index_scans_only_blocks_that_can_match(tmp_path, setup, indexed, monkey
     wait_ready(search, ds.id)
     meta, blocks = search.candidate_blocks(ds.id, search._key(ds.path), ["Needle", "hay"])
     assert meta["blocks"] == 10 and blocks == [3, 8]
-    assert search.status(ds.id).size_bytes < 10 * search_module.BLOCK_BITS // 8 + 1000
+    assert search.status(ds.id).size_bytes < 10 * search_module.BLOCK_BITS // 8 + 10_000
 
     found = search.search(ds.id, SearchRequest(query="needle"))
     assert ids(found) == ["37", "81"] and found.total == 2 and found.total_exact
@@ -102,3 +103,59 @@ def test_index_scans_only_blocks_that_can_match(tmp_path, setup, indexed, monkey
     monkeypatch.setattr(search_module, "COUNT_BUDGET_S", -1)
     partial = search.search(ds.id, SearchRequest(query="plain row", limit=5))
     assert ids(partial) == ["0", "1", "2", "3", "4"] and not partial.total_exact and partial.total >= 5
+
+
+def test_index_search_over_the_browse_copy_matches_a_full_scan(tmp_path, setup, indexed, monkeypatch):
+    from app.services import browse_copy as copy_module
+    from app.services.browse_copy import browse_copies
+
+    _, search = setup
+    monkeypatch.setattr(browse_copies, "base", tmp_path / "copies")
+    monkeypatch.setattr(copy_module, "BROWSE_GROUP_ROWS", 7)
+    path = tmp_path / "mixed.parquet"
+    pl.DataFrame({
+        "n": list(range(100)),
+        "text": ["needle 0.5 here" if i % 30 == 7 else f"row {i}" for i in range(100)],
+        "score": [0.5 if i % 9 == 0 else i / 3 for i in range(100)],
+        "tags": [[i % 4, 37] if i % 11 == 0 else [i % 4] for i in range(100)],
+        "labels": [["red", "Needle"] if i % 13 == 0 else ["blue"] for i in range(100)],
+    }).write_parquet(path)
+    ds = dataset_manager.load_dataset(LoadDatasetRequest(path=str(path)))
+    browse_copies.build(ds.id)
+    for _ in range(200):
+        if browse_copies.status(ds.id).state != "building":
+            break
+        time.sleep(0.05)
+    assert browse_copies.ready_path(ds)
+    search.build_index(ds.id)
+    wait_ready(search, ds.id)
+    for query in ["needle", "0.5", "needle 0.5", "37", "RED needle", "row 9", "e"]:
+        found = search.search(ds.id, SearchRequest(query=query, limit=1000))
+        monkeypatch.setattr(search_module, "SCAN_LIMIT_BYTES", 1 << 40)
+        expected = search.search(ds.id, SearchRequest(query=query, limit=1000))
+        monkeypatch.setattr(search_module, "SCAN_LIMIT_BYTES", 0)
+        assert found.mode == "index" and expected.mode == "scan"
+        assert ids(found) == ids(expected) and found.total == expected.total, query
+        assert [r.data for r in found.results] == [r.data for r in expected.results], query
+    page = search.search(ds.id, SearchRequest(query="row", offset=40, limit=5))
+    assert ids(page) == ["42", "43", "44", "45", "46"]
+    assert list(page.results[0].data) == ["n", "text", "score", "tags", "labels"]
+    browse_copies.delete(ds.id)
+
+
+def test_word_list_prunes_blocks_the_snippets_cannot(tmp_path, setup, indexed):
+    _, search = setup
+    path = tmp_path / "words.csv"
+    text = ["Once a DEADENDS story, job done" if i == 37 else f"dead ends made dens {i}" for i in range(100)]
+    pl.DataFrame({"text": text}).write_csv(path)
+    ds = dataset_manager.load_dataset(LoadDatasetRequest(path=str(path)))
+    search.build_index(ds.id)
+    wait_ready(search, ds.id)
+    key = search._key(ds.path)
+    assert search.candidate_blocks(ds.id, key, ["deadend"])[1] == [3]
+    assert search.candidate_blocks(ds.id, key, ["deadend", "made"])[1] == [3]
+    assert search.candidate_blocks(ds.id, key, ["Dead-End"])[1] == []
+    assert search.candidate_blocks(ds.id, key, ["Dead"])[1] == list(range(10))
+    assert ids(search.search(ds.id, SearchRequest(query="deadend job"))) == ["37"]
+    assert ids(search.search(ds.id, SearchRequest(query="EADEN"))) == ["37"]
+    assert search.search(ds.id, SearchRequest(query="deadend made")).total == 0

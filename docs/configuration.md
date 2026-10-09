@@ -102,7 +102,7 @@ and width, the fold state of the Data folder section, and the theme.
 | `backend/.data_expert/functions.json` | Generated functions | Yes; saved transforms embed what they need |
 | `backend/.data_expert/profiles/`, `insights/` | Cached profiles and insights | Yes; regenerated on demand |
 | `backend/.data_expert/search_indexes/` | Search indexes | Yes; rebuilt on the next search |
-| `backend/.data_expert/browse_copies/` | Browse copies (“Optimize for browsing”), about the size of each file | Yes, with the backend stopped; deep pages get slow again until you rebuild |
+| `backend/.data_expert/browse_copies/` | Browse copies (“Optimize for browsing”, Arrow IPC files), up to about the size of each file | Yes, with the backend stopped; deep pages get slow again until you rebuild |
 | `backend/data_expert_exports/`, `data_expert_outputs/` | Default export and combine output | Your files |
 | `<data folder>/.data-expert-history/` | Version history | Deleting it loses history; the data files stay |
 

@@ -10,13 +10,18 @@ interface SearchStatusProps {
   total: number
   /** False when `total` is a lower bound (counting stopped early). */
   totalExact?: boolean
+  /** How long the search took, in milliseconds. */
+  tookMs?: number | null
   indexing: SearchIndexStatus | null
   onClear: () => void
 }
 
 /** What the table shows while searching: match count, or progress of the index a large file needs first. */
-export function SearchStatus({ query, shown, total, totalExact = true, indexing, onClear }: SearchStatusProps) {
+const formatTook = (ms: number) => (ms < 1000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(2)} s`)
+
+export function SearchStatus({ query, shown, total, totalExact = true, tookMs, indexing, onClear }: SearchStatusProps) {
   const count = `${formatNumber(total)}${totalExact ? "" : "+"}`
+  const took = tookMs != null && <span className="font-semibold text-muted-foreground"> ({formatTook(tookMs)})</span>
   return (
     <div className="space-y-2 rounded-2xl border-2 border-secondary/40 bg-secondary/5 px-4 py-2">
       <div className="flex items-center gap-3 text-sm font-bold">
@@ -27,10 +32,10 @@ export function SearchStatus({ query, shown, total, totalExact = true, indexing,
         ) : indexing?.state === "error" ? (
           <span className="text-destructive">Could not prepare search: {indexing.error}</span>
         ) : total === 0 ? (
-          <span>No rows match “{query}”</span>
+          <span>No rows match “{query}”{took}</span>
         ) : (
           <span>
-            {total > shown ? `First ${formatNumber(shown)} of ${count}` : count} matches for “{query}”
+            {total > shown ? `First ${formatNumber(shown)} of ${count}` : count} matches for “{query}”{took}
           </span>
         )}
         <Button variant="ghost" size="sm" className="ml-auto" onClick={onClear}>

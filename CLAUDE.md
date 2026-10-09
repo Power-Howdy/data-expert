@@ -28,10 +28,13 @@ Vite frontend (`frontend/`). Read [docs/architecture.md](docs/architecture.md) b
   deltas; transforms store hardlinked snapshots. See [docs/version-control.md](docs/version-control.md).
 - Opening a file must stay instant: `get_stats` reads metadata (Parquet footer), never the data, for large files.
   Plain row pages go through `services/row_cache.py`. Its streaming readers hold files open, so call
-  `row_cache.release(path)` before replacing a data file. Opt-in browse copies (`services/browse_copy.py`) are
-  read instead when they match the file; `browse_copies.delete(id)` stops a build that holds the file open.
+  `row_cache.release(path)` before replacing a data file. Opt-in browse copies (`services/browse_copy.py`, Arrow
+  IPC in 10k-row batches) are read instead when they match the file; `browse_copies.delete(id)` stops a build that
+  holds the file open.
 - Search: files under 256 MB are scanned with Polars (including pending edits); larger files use a background
-  block index (per-block n-gram fingerprints, ~1/200 of the file; candidate blocks are then scanned). Call `search_engine.delete_index` before replacing a data file, because Windows locks open files.
+  block index (per-block n-gram fingerprints plus a word list, under 1/100 of the file). Candidate blocks are then
+  scanned in parallel, from the browse copy when there is one. Results must stay exactly those of a full scan.
+  Call `search_engine.delete_index` before replacing a data file, because Windows locks open files.
 - Generated AI functions must pass `services/functions/sandbox.py`. New built-ins go in
   `services/functions/builtin/` with `@builtin(...)`.
 - Endpoints are sync functions (thread pool); protect shared state with locks.

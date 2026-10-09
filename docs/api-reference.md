@@ -90,8 +90,8 @@ Prefix: `/api/datasets/{id}/versions`. A `{ref}` is a commit id, a unique prefix
 
 ## Browse copy
 
-An optional copy of a large file with small row groups, so every page loads quickly. See
-[Architecture](architecture.md#request-flow-browsing-a-page).
+An optional Arrow copy of a large file in small batches, so every page loads quickly and searches scan it fast.
+See [Architecture](architecture.md#request-flow-browsing-a-page).
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -106,7 +106,7 @@ An optional copy of a large file with small row groups, so every page loads quic
 | GET | `/api/datasets/{id}/stats` | Overview: rows, columns, memory, missing, duplicates |
 | GET | `/api/datasets/{id}/profile?sample_size=&refresh=false` | Full profile (cached; computed if missing or `refresh=true`) |
 | GET | `/api/datasets/{id}/profile/saved` | Cached profile or `null` |
-| GET | `/api/datasets/{id}/distributions/{column}?bins=50` | Histogram or top values |
+| GET | `/api/datasets/{id}/distributions/{column}?bins=50` | Histogram (`bins`, `bin_edges`, `stats`) or top values (`values`, `counts`, `total_unique`, `total` non-empty values, `note`) |
 | GET | `/api/datasets/{id}/outliers/{column}?method=iqr&threshold=1.5` | Outliers (`iqr` or `zscore`) |
 
 ## Combine and separate

@@ -73,11 +73,13 @@ needed.
      offset.
    - On files written as one huge row group, this turns a multi-second first page into about 50 ms.
    - Deep pages in such files still take 1–2 s, and large text formats are scanned from the start. For these,
-     the user can opt in to a **browse copy** (`browse_copy.py`). It is the same rows rewritten as Parquet with
-     10,000-row row groups in `backend/.data_expert/browse_copies/<dataset id>/`, built on a background thread.
-     It is keyed by the file's size and modification time, so it is only used for the version it was built from.
-     When one exists, pages are read from it and any page takes under 0.15 s. Saving a version deletes the copy
-     before the file is replaced, then rebuilds it; unloading the dataset deletes it.
+     the user can opt in to a **browse copy** (`browse_copy.py`). It is the same rows rewritten as an Arrow IPC
+     file (zstd) with 10,000-row batches in `backend/.data_expert/browse_copies/<dataset id>/`, built on a
+     background thread. It is keyed by the file's size and modification time, so it is only used for the version
+     it was built from. When one exists, pages are read from it (the last few decoded batches stay cached) and any
+     page takes under 0.2 s. Search scans it too: Arrow batches decode in one pass, several times faster than
+     Parquet. Saving a version deletes the copy before the file is replaced, then rebuilds it; unloading the
+     dataset deletes it.
 3. Otherwise pending edits are applied lazily (`changes.py`), then filters, sorts and the slice, and Polars
    collects only the requested slice.
 4. Rows are returned with their stable row id.
@@ -132,8 +134,8 @@ A Vite + React + TypeScript single-page app. See the [Frontend guide](frontend.m
 | `backend/.data_expert/ai_settings.json` | AI providers, API keys, model settings, prompts |
 | `backend/.data_expert/functions.json` | Generated library functions |
 | `backend/.data_expert/profiles/`, `insights/` | Cached profiles and AI insights |
-| `backend/.data_expert/search_indexes/` | Search indexes of large files (about 1/200 of each file) |
-| `backend/.data_expert/browse_copies/` | Opt-in copies of large files with small row groups, for fast paging |
+| `backend/.data_expert/search_indexes/` | Search indexes of large files (under 1/100 of each file) |
+| `backend/.data_expert/browse_copies/` | Opt-in Arrow copies of large files in small batches, for fast paging and search |
 | `<data folder>/.data-expert-history/<file>/` | Version history of each tracked file |
 
 None of this belongs in version control; all of it is in `.gitignore`.
