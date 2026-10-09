@@ -8,6 +8,8 @@ gigabytes.** Point it at a folder, open any Parquet, CSV, JSON or Excel file, an
 reshape it in your browser. Every save becomes a version you can compare and restore, and an AI assistant turns
 plain-language requests into transformations, without ever sending your data to the model.
 
+![Browsing a 1,000,000-row Parquet file in Data Expert](docs/screenshots/browse.png)
+
 ## Highlights
 
 - **Huge files, fast.** Polars reads lazily: opening a multi-gigabyte Parquet file reads its metadata, and each
@@ -29,6 +31,48 @@ plain-language requests into transformations, without ever sending your data to 
   downloads. Concatenate, join and merge datasets, or split one by a column.
 
 Supported formats: Parquet, CSV, TSV, JSON, JSON Lines, JSON.gz, Feather, Avro, ORC, Excel.
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="docs/screenshots/search.png" alt="Search results with match count and time taken">
+      <p align="center"><b>Search</b>: every column of 1M rows, with the match count and time taken</p>
+    </td>
+    <td width="50%">
+      <img src="docs/screenshots/record.png" alt="Row detail panel">
+      <p align="center"><b>Row details</b>: every field of a row, editable as a form or JSON</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="docs/screenshots/stats-overview.png" alt="Statistics overview">
+      <p align="center"><b>Statistics</b>: column types, completeness and a column quality map</p>
+    </td>
+    <td width="50%">
+      <img src="docs/screenshots/stats-columns.png" alt="Column profiles">
+      <p align="center"><b>Column profiles</b>: the right chart for each column</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="docs/screenshots/column-detail.png" alt="Column details with histogram, cumulative share and box plot">
+      <p align="center"><b>Column details</b>: histogram, cumulative share and spread</p>
+    </td>
+    <td width="50%">
+      <img src="docs/screenshots/data-tools.png" alt="Data tools pipeline with preview">
+      <p align="center"><b>Data tools</b>: build a pipeline by hand, with a live preview</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="docs/screenshots/ai-plan.png" alt="AI assistant plan">
+      <p align="center"><b>AI assistant</b>: a plain-language request becomes a plan you review</p>
+    </td>
+    <td width="50%"></td>
+  </tr>
+</table>
 
 ## Quick start
 
