@@ -143,6 +143,11 @@ See [Architecture](architecture.md#request-flow-browsing-a-page).
 | GET | `/api/views/{view_id}/rows?offset=&limit=&filters=` | Page through a view |
 | DELETE | `/api/views/{view_id}` | Discard a view |
 | POST | `/api/views/{view_id}/apply` | Record the view's steps as a pending transform of its dataset |
+| GET | `/api/functions` | Function library, the same list without the AI prefix |
+| POST | `/api/transform/preview` | Run steps on the first 200 rows, no model involved: `{"dataset_id", "steps", "view_id"?}` → `columns`, `rows` (first 20), `sample_rows`, `result_rows` |
+| POST | `/api/transform/run` | Run steps on the whole dataset or view in the background: `{"dataset_id", "steps", "description"?, "view_id"?}` → job |
+| GET | `/api/transform/jobs/{job_id}` | Job progress; `view` is set when done |
+| POST | `/api/transform/jobs/{job_id}/cancel` | Cancel a job |
 | GET | `/api/datasets/{id}/ai/insights` | Cached insights or `null` |
 | POST | `/api/datasets/{id}/ai/insights` | Generate insights: `{"focus"?}` |
 

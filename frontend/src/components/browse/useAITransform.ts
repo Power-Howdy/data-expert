@@ -1,8 +1,9 @@
 import * as React from "react"
 import toast from "react-hot-toast"
 import { aiApi } from "@/lib/aiApi"
+import { transformApi } from "@/lib/transformApi"
 import { useEditStore } from "@/stores/useEditStore"
-import type { AIJob, DataView, TransformPlan } from "@/types/ai"
+import type { AIJob, DataView, PlanStep, TransformPlan } from "@/types/ai"
 
 const POLL_MS = 800
 
@@ -31,9 +32,9 @@ export function useAITransform(datasetId: string | undefined) {
         if (next.status === "done" && next.view) {
           setView(next.view)
           setPlan(null)
-          toast.success(`AI result ready: ${next.view.total.toLocaleString()} rows`)
+          toast.success(`Result ready: ${next.view.total.toLocaleString()} rows`)
         } else if (next.status === "error") {
-          toast.error(next.error || "AI transform failed")
+          toast.error(next.error || "Transform failed")
         }
       } catch {
         setJob(null)
@@ -62,6 +63,13 @@ export function useAITransform(datasetId: string | undefined) {
     setJob(await aiApi.apply(datasetId, plan, submitted, view?.id))
   }
 
+  /** Runs hand-picked tool steps through the same executor; the result replaces or refines the current view. */
+  const runSteps = async (steps: PlanStep[], description: string) => {
+    if (!datasetId || !steps.length) return
+    setPlan(null)
+    setJob(await transformApi.run(datasetId, { steps, description, viewId: view?.id }))
+  }
+
   const cancel = () => job && aiApi.cancelJob(job.id)
 
   const discardView = () => {
@@ -87,7 +95,7 @@ export function useAITransform(datasetId: string | undefined) {
   }
 
   return {
-    prompt, setPrompt, plan, setPlan, planning, makePlan, run, cancel,
+    prompt, setPrompt, plan, setPlan, planning, makePlan, run, runSteps, cancel,
     job, running: job?.status === "running", view, discardView, applyView, applying,
   }
 }

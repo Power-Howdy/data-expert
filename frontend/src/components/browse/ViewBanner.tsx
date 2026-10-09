@@ -16,7 +16,7 @@ export function ViewBanner({ view, onDiscard, onApply, applying = false }: ViewB
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2 text-sm font-bold">
           <Sparkles className="h-4 w-4 shrink-0 text-accent-foreground" />
-          <span className="shrink-0">AI result · {view.total.toLocaleString()} rows</span>
+          <span className="shrink-0">Result · {view.total.toLocaleString()} rows</span>
           {view.prompt && <span className="truncate font-semibold text-muted-foreground">“{view.prompt}”</span>}
         </div>
         <div className="flex items-center gap-2">
@@ -37,7 +37,7 @@ export function ViewBanner({ view, onDiscard, onApply, applying = false }: ViewB
       ))}
       <p className="text-xs font-semibold text-muted-foreground">
         Not saved yet. “Save as dataset” writes it to a new file; “Apply to dataset” makes it a pending change of this
-        file. Or send another prompt to refine it.
+        file. Or refine it with another prompt or more tool steps.
       </p>
     </div>
   )

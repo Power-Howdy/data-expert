@@ -23,6 +23,7 @@ from app.services.browse_copy import browse_copies
 from app.services.profile_store import insights_store
 from app.api.ai_routes import router as ai_router
 from app.api.version_routes import router as version_router
+from app.api.transform_routes import router as transform_router
 from app.models.version_schemas import CommitRequest, VersionCommit
 from app.models.schemas import (
     Dataset, LoadDatasetRequest, ScanRequest, ScanResponse,
@@ -63,6 +64,7 @@ app.add_middleware(
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.include_router(ai_router)
 app.include_router(version_router)
+app.include_router(transform_router)
 
 
 # Dependency for dataset validation

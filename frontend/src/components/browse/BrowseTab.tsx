@@ -1,40 +1,24 @@
-import * as React from "react"
 import { Separator } from "@/components/ui/separator"
 import { EmptyState } from "@/components/common/EmptyState"
 import { PageHeader } from "@/components/common/PageHeader"
-import { useSelectedDataset } from "@/hooks/useSelectedDataset"
 import { formatNumber } from "@/lib/utils"
-import { useBrowseData } from "./useBrowseData"
-import { useSearch } from "./useSearch"
+import { useBrowseTab } from "./useBrowseTab"
 import { SearchStatus } from "./SearchStatus"
 import { SearchBar } from "./SearchBar"
-import { useDatasetColumns } from "./useDatasetColumns"
-import { useAITransform } from "./useAITransform"
 import { FilterPanel } from "./FilterPanel"
 import { BrowseFooter } from "./BrowseFooter"
 import { BrowseTable } from "./BrowseTable"
 import { BrowseActions } from "./BrowseActions"
 import { AIAssistant } from "./AIAssistant"
+import { DataTools } from "./DataTools"
 import { ViewBanner } from "./ViewBanner"
 import { PendingChangesBar } from "./PendingChangesBar"
-import { BrowseDialogs, type BrowseDialog } from "./BrowseDialogs"
+import { BrowseDialogs } from "./BrowseDialogs"
 import { BrowseCopyNotice } from "./BrowseCopyNotice"
-import { useBrowseCopy } from "./useBrowseCopy"
 
 export function BrowseTab() {
-  const dataset = useSelectedDataset()
-  const ai = useAITransform(dataset?.id)
-  const schema = ai.view?.schema ?? dataset?.schema
-  const columns = useDatasetColumns(schema)
-  const data = useBrowseData(dataset, ai.view)
-  const search = useSearch(dataset?.id)
-  const browseCopy = useBrowseCopy(dataset)
-  const [showSearch, setShowSearch] = React.useState(false)
-  const [showFilters, setShowFilters] = React.useState(false)
-  const [showAI, setShowAI] = React.useState(false)
-  const [dialog, setDialog] = React.useState<BrowseDialog>(null)
-  const showingSearch = !ai.view && search.searched !== null
-  const editable = !ai.view && !showingSearch
+  const { dataset, ai, tools, schema, columns, columnNames, data, search, browseCopy, panels, dialog, setDialog, showingSearch, editable } =
+    useBrowseTab()
 
   if (!dataset || !schema) {
     return (
@@ -51,9 +35,7 @@ export function BrowseTab() {
         subtitle={`${formatNumber(dataset.row_count)} rows · ${dataset.schema.length} columns · ${dataset.format}`}
         actions={
           <BrowseActions
-            searchOpen={showSearch} onToggleSearch={ai.view ? undefined : () => setShowSearch(!showSearch)}
-            filterCount={data.filters.length} filtersOpen={showFilters} onToggleFilters={() => setShowFilters(!showFilters)}
-            aiOpen={showAI} onToggleAI={() => setShowAI(!showAI)}
+            isOpen={panels.isOpen} onToggle={panels.toggle} filterCount={data.filters.length} canSearch={!ai.view}
             onSave={() => setDialog("save")}
             onAddRow={ai.view ? undefined : () => setDialog("add")}
             onReplace={ai.view ? undefined : () => setDialog("replace")}
@@ -63,12 +45,13 @@ export function BrowseTab() {
       <div className="shrink-0 space-y-5 empty:hidden">
         <PendingChangesBar datasetId={dataset.id} />
         {!ai.view && <BrowseCopyNotice {...browseCopy} fileBytes={dataset.size_bytes} />}
-        {showAI && <AIAssistant ai={ai} />}
-        {showSearch && !ai.view && (
+        {panels.isOpen("ai") && <AIAssistant ai={ai} />}
+        {panels.isOpen("tools") && <DataTools tools={tools} transform={ai} columns={columnNames} />}
+        {panels.isOpen("search") && !ai.view && (
           <SearchBar query={search.query} loading={search.loading} onQueryChange={search.setQuery} onSearch={search.search} />
         )}
         {ai.view && <ViewBanner view={ai.view} onDiscard={ai.discardView} onApply={ai.applyView} applying={ai.applying} />}
-        {showFilters && <FilterPanel filters={data.filters} columns={schema.map((c) => c.name)} onChange={data.setFilters} />}
+        {panels.isOpen("filters") && <FilterPanel filters={data.filters} columns={columnNames} onChange={data.setFilters} />}
       </div>
       <Separator />
       {showingSearch && (
@@ -93,7 +76,7 @@ export function BrowseTab() {
       )}
       <BrowseDialogs
         dialog={dialog} onClose={() => setDialog(null)} dataset={dataset} schema={schema} view={ai.view}
-        filters={data.filters} rowCount={data.total} onSavedAs={() => setShowAI(false)}
+        filters={data.filters} rowCount={data.total} onSavedAs={() => { panels.close("ai"); panels.close("tools") }}
       />
     </div>
   )

@@ -4,7 +4,7 @@ import time
 import polars as pl
 import pytest
 
-from app.models.ai_schemas import ApplyPlanRequest, PlanStep, SaveAsRequest, TransformPlan
+from app.models.ai_schemas import ApplyPlanRequest, PlanStep, SaveAsRequest, StepsRequest, TransformPlan
 from app.models.schemas import LoadDatasetRequest
 from app.services.ai.client import AIError, parse_json
 from app.services.ai.executor import start_apply
@@ -13,6 +13,7 @@ from app.services.ai.planner import check_plan, plan_transform
 from app.services.data_loader import dataset_manager
 from app.services.functions.library import function_library
 from app.services.functions.sandbox import SandboxError, compile_function
+from app.services.functions.steps import preview_steps, run_steps
 from app.services.save_as import save_as_dataset
 
 SECRET = "SECRET-ROW-NEVER-SENT"
@@ -118,6 +119,30 @@ def test_plan_generates_function_without_sending_data(dataset):
     saved = save_as_dataset(dataset.id, SaveAsRequest(name="enriched", view_id=status.view.id))
     df = pl.read_parquet(saved.path)
     assert df["n_words"].to_list()[0] == 4 and df["emails"].to_list()[3] == ["x@y.org", "z@w.io"]
+
+
+def test_manual_steps_preview_and_run_without_a_model(dataset, monkeypatch):
+    def no_model(*args, **kwargs):
+        raise AssertionError("manual steps must not call a model")
+
+    monkeypatch.setattr(FakeLLM, "chat_json", no_model)
+    steps = [
+        PlanStep(op="filter_rows", params={"column": "text", "operator": "contains", "value": "@"}),
+        PlanStep(op="extract_pattern", params={"column": "text", "new_column": "emails", "preset": "email"}),
+    ]
+    request = StepsRequest(dataset_id=dataset.id, steps=steps, description="emails")
+    preview = preview_steps(request)
+    assert preview.sample_rows == 21 and preview.result_rows == 2
+    assert preview.rows[1]["emails"] == ["x@y.org", "z@w.io"] and "emails" in {c.name for c in preview.columns}
+
+    status = wait(run_steps(request).id)
+    assert status.status == "done", status.error
+    assert status.view.total == 2 and status.view.prompt == "emails"
+
+    with pytest.raises(ValueError, match="unknown column"):
+        preview_steps(StepsRequest(dataset_id=dataset.id, steps=[PlanStep(op="top_n", params={"column": "nope"})]))
+    with pytest.raises(ValueError, match="at least one step"):
+        run_steps(StepsRequest(dataset_id=dataset.id))
 
 
 def test_save_as_filters_and_refuses_overwrite(dataset):

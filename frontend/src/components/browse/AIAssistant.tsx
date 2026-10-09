@@ -1,9 +1,9 @@
-import { Settings2, Square, Wand2 } from "lucide-react"
+import { Settings2, Wand2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { LoadingButton } from "@/components/common/LoadingButton"
-import { ProgressBar } from "@/components/common/ProgressBar"
 import { SectionCard } from "@/components/common/SectionCard"
+import { JobProgress } from "./JobProgress"
 import { useAIConfigured, useAIStore } from "@/stores/useAIStore"
 import type { AITransform } from "./useAITransform"
 import { SamplePrompts } from "./SamplePrompts"
@@ -28,7 +28,7 @@ export function AIAssistant({ ai }: { ai: AITransform }) {
         </p>
       )}
       <p className="text-xs font-semibold text-muted-foreground">
-        {ai.view ? "Prompts now refine the current AI result." : "Describe what you want; you'll review the plan before anything runs."}
+        {ai.view ? "Prompts now refine the current result." : "Describe what you want; you'll review the plan before anything runs."}
       </p>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
         <Textarea
@@ -53,14 +53,7 @@ export function AIAssistant({ ai }: { ai: AITransform }) {
       {ai.plan && (
         <PlanPreview plan={ai.plan} onRun={ai.run} onDismiss={() => ai.setPlan(null)} running={ai.running} />
       )}
-      {ai.running && ai.job && (
-        <div className="flex items-end gap-3">
-          <ProgressBar className="flex-1" value={ai.job.done} max={ai.job.total} label={ai.job.message || "Working..."} />
-          <Button variant="outline" size="sm" onClick={ai.cancel}>
-            <Square className="h-3.5 w-3.5" /> Stop
-          </Button>
-        </div>
-      )}
+      {ai.running && ai.job && <JobProgress job={ai.job} onCancel={ai.cancel} />}
     </SectionCard>
   )
 }

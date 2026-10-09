@@ -1,5 +1,5 @@
 import {
-  BarChart3, Combine, Download, FolderOpen, GitBranch, PenLine, Search, ShieldCheck, Sparkles, Table2, type LucideIcon,
+  BarChart3, Combine, Download, FolderOpen, GitBranch, PenLine, Search, ShieldCheck, Sparkles, Table2, Wrench, type LucideIcon,
 } from "lucide-react"
 
 export interface GuideTopic {
@@ -67,6 +67,16 @@ export const GUIDE_TOPICS: GuideTopic[] = [
       "Apply turns the result into pending changes on the dataset; Save as dataset writes it to a new file instead.",
       "Configure the AI provider and model with the sparkle button in the top bar. Local servers (such as llama.cpp) and cloud providers are supported.",
       "The function library in AI settings lists every step the assistant can use, including ones it generated.",
+    ],
+  },
+  {
+    id: "tools", title: "Data tools", icon: Wrench, tab: "browse",
+    intro: "Click Tools on the Browse tab to build the same kind of pipeline yourself, without AI.",
+    points: [
+      "Pick a category and a tool, fill in its settings and click Add step. Steps run in order; reorder or remove them with the buttons next to each step.",
+      "Column settings list the columns as they will be at that step, so later steps can use columns that earlier steps create.",
+      "A preview on the first 200 rows updates as you add steps and shows any problem, such as a missing setting.",
+      "Run applies the steps to the whole dataset and opens the result as a view: apply it, save it as a dataset, or refine it with more steps or an AI prompt.",
     ],
   },
   {

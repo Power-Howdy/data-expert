@@ -119,6 +119,14 @@ export interface AIJob {
   view?: DataView | null
 }
 
+/** Steps run on the first rows of the data. */
+export interface StepsPreview {
+  columns: ColumnSchema[]
+  rows: Record<string, unknown>[]
+  sample_rows: number
+  result_rows: number
+}
+
 export interface AIInsights {
   dataset_id: string
   markdown: string

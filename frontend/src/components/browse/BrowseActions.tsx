@@ -1,36 +1,40 @@
-import { Filter, Plus, Replace, Save, Search, Sparkles } from "lucide-react"
+import { Filter, Plus, Replace, Save, Search, Sparkles, Wrench } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
+export type BrowsePanel = "ai" | "tools" | "search" | "filters"
+
 interface BrowseActionsProps {
-  searchOpen: boolean
-  /** Omitted while an AI result is shown, which cannot be searched. */
-  onToggleSearch?: () => void
+  isOpen: (panel: BrowsePanel) => boolean
+  onToggle: (panel: BrowsePanel) => void
   filterCount: number
-  filtersOpen: boolean
-  onToggleFilters: () => void
-  aiOpen: boolean
-  onToggleAI: () => void
+  /** False while a transform result is shown, which cannot be searched. */
+  canSearch: boolean
   onSave: () => void
-  /** Editing actions; omitted while an AI result is shown. */
+  /** Editing actions; omitted while a transform result is shown. */
   onAddRow?: () => void
   onReplace?: () => void
 }
 
-export function BrowseActions({
-  searchOpen, onToggleSearch, filterCount, filtersOpen, onToggleFilters, aiOpen, onToggleAI, onSave, onAddRow,
-  onReplace,
-}: BrowseActionsProps) {
+export function BrowseActions({ isOpen, onToggle, filterCount, canSearch, onSave, onAddRow, onReplace }: BrowseActionsProps) {
+  const toggle = (panel: BrowsePanel) => ({
+    variant: isOpen(panel) ? ("default" as const) : ("outline" as const),
+    size: "sm" as const,
+    onClick: () => onToggle(panel),
+  })
   return (
     <>
-      <Button variant={aiOpen ? "default" : "outline"} size="sm" onClick={onToggleAI}>
+      <Button {...toggle("ai")}>
         <Sparkles className="h-4 w-4" /> AI
       </Button>
-      {onToggleSearch && (
-        <Button variant={searchOpen ? "default" : "outline"} size="sm" onClick={onToggleSearch}>
+      <Button {...toggle("tools")}>
+        <Wrench className="h-4 w-4" /> Tools
+      </Button>
+      {canSearch && (
+        <Button {...toggle("search")}>
           <Search className="h-4 w-4" /> Search
         </Button>
       )}
-      <Button variant={filtersOpen ? "default" : "outline"} size="sm" onClick={onToggleFilters}>
+      <Button {...toggle("filters")}>
         <Filter className="h-4 w-4" /> Filters ({filterCount})
       </Button>
       {onAddRow && (

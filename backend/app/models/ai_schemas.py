@@ -118,6 +118,22 @@ class ApplyPlanRequest(BaseModel):
     view_id: Optional[str] = None
 
 
+class StepsRequest(BaseModel):
+    """Function-library steps chosen by hand, run without any model."""
+    dataset_id: str
+    steps: List[PlanStep] = Field(default_factory=list)
+    description: str = ""
+    view_id: Optional[str] = None
+
+
+class StepsPreview(BaseModel):
+    """The steps run on the first rows of the data, so mistakes show before the full run."""
+    columns: List[ColumnSchema] = Field(default_factory=list)
+    rows: List[Dict[str, Any]] = Field(default_factory=list)
+    sample_rows: int = 0
+    result_rows: int = 0
+
+
 class ViewInfo(BaseModel):
     id: str
     dataset_id: str

@@ -124,6 +124,19 @@ step the assistant can use; generated functions can be deleted there.
 
 Details: [AI assistant](ai-assistant.md).
 
+## Data tools
+
+The same function library works without AI. Click **Tools** on the Browse tab:
+
+1. Pick a category and a tool, fill in its settings and click **Add step**. Column settings offer the columns as
+   they will be at that step, so later steps can use columns created by earlier ones.
+2. Steps run in order. Reorder or remove them with the buttons next to each step. A preview on the first 200
+   rows updates as you go and shows any error, such as a missing setting or an unknown column.
+3. Click **Run** to apply the steps to the whole dataset. The result opens as a view, exactly like an AI result:
+   apply it, save it as a dataset, or keep refining it with more steps or a prompt.
+
+No AI provider is needed, and nothing leaves your computer.
+
 ## Statistics
 
 The **Stats** tab profiles the selected dataset.

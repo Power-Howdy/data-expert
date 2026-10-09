@@ -9,6 +9,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- **Data tools**: build a pipeline from the function library without AI (Tools button on the Browse tab), with a
+  live preview on the first 200 rows. Results open as a view like AI results (`/api/transform/*`).
 - Open-source project files: license, contributing guide, code of conduct, security policy, issue and pull
   request templates, and CI.
 - Documentation under `docs/`.

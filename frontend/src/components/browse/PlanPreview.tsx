@@ -2,18 +2,13 @@ import { AlertTriangle, Play, ShieldCheck, Sparkles, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import type { PlanStep, TransformPlan } from "@/types/ai"
+import { stepSummary } from "./toolParams"
 
 interface PlanPreviewProps {
   plan: TransformPlan
   onRun: () => void
   onDismiss: () => void
   running?: boolean
-}
-
-function summarize(step: PlanStep) {
-  return Object.entries(step.params)
-    .map(([k, v]) => `${k}: ${typeof v === "string" ? v : JSON.stringify(v)}`)
-    .join(" · ")
 }
 
 export function PlanPreview({ plan, onRun, onDismiss, running }: PlanPreviewProps) {
@@ -36,7 +31,7 @@ export function PlanPreview({ plan, onRun, onDismiss, running }: PlanPreviewProp
                 {isNew(step) && <span className="text-xs font-bold text-muted-foreground">new function, saved to library</span>}
                 <span className="font-bold">{step.description}</span>
               </div>
-              <p className="mt-1 break-words font-mono text-xs text-muted-foreground">{summarize(step)}</p>
+              <p className="mt-1 break-words font-mono text-xs text-muted-foreground">{stepSummary(step)}</p>
             </div>
           </li>
         ))}
