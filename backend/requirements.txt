@@ -22,7 +22,7 @@ joblib==1.6.0
 librt==0.16.0
 mypy==2.4.0
 mypy_extensions==1.1.0
-narwhals==2.26.0
+narwhals==2.27.1
 numpy==2.5.3
 openpyxl==3.1.5
 opentelemetry-api==1.45.1
