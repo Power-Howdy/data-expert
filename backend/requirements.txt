@@ -32,7 +32,7 @@ pathspec==1.1.1
 pluggy==1.6.0
 polars==2.0.0
 polars-runtime-32==2.0.0
-pyarrow==25.0.1
+pyarrow==26.0.0
 pydantic==2.14.0
 pydantic-settings==2.15.0
 pydantic_core==2.50.1
