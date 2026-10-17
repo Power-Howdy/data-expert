@@ -8,7 +8,7 @@ cloudpickle==3.1.2
 colorama==0.4.6
 cramjam==2.13.0
 et_xmlfile==2.0.0
-fastapi==0.142.4
+fastapi==0.143.1
 fastavro==1.13.1
 fastexcel==0.21.0
 fastparquet==2026.9.0
