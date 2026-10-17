@@ -2,24 +2,22 @@
 import * as React from "react"
 import {
   ColumnDef,
-  getCoreRowModel,
-  getSortedRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  useReactTable,
-  SortingState,
   ColumnFiltersState,
-  VisibilityState,
+  ColumnVisibilityState,
   PaginationState,
+  RowData,
   RowSelectionState,
+  SortingState,
+  useTable,
 } from "@tanstack/react-table"
 import { DataTableHeaderCell } from "./data-table-header-cell"
 import { DataTableBody } from "./data-table-body"
 import { DataTablePagination } from "./data-table-pagination"
+import { dataTableFeatures, DataTableFeatures } from "@/lib/tableFeatures"
 import { cn } from "@/lib/utils"
 
-interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[]
+interface DataTableProps<TData extends RowData> {
+  columns: ColumnDef<DataTableFeatures, TData>[]
   data: TData[]
   pageSize?: number
   paginate?: boolean
@@ -29,7 +27,7 @@ interface DataTableProps<TData, TValue> {
   onSelectionChange?: (rows: TData[]) => void
 }
 
-export function DataTable<TData, TValue>({
+export function DataTable<TData extends RowData>({
   columns,
   data,
   pageSize = 50,
@@ -38,14 +36,15 @@ export function DataTable<TData, TValue>({
   className,
   onRowClick,
   onSelectionChange,
-}: DataTableProps<TData, TValue>) {
+}: DataTableProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
+  const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibilityState>({})
   const [pagination, setPagination] = React.useState<PaginationState>({ pageIndex: 0, pageSize })
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
 
-  const table = useReactTable({
+  const table = useTable({
+    features: dataTableFeatures,
     data,
     columns,
     state: { sorting, columnFilters, columnVisibility, pagination, rowSelection },
@@ -54,10 +53,10 @@ export function DataTable<TData, TValue>({
     onColumnVisibilityChange: setColumnVisibility,
     onPaginationChange: setPagination,
     onRowSelectionChange: setRowSelection,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    ...(paginate ? { getPaginationRowModel: getPaginationRowModel() } : {}),
+    // v8 skipped the pagination row model entirely when `paginate` was false;
+    // v9 registers that row model on the shared features object, so opting out
+    // per table is done with `manualPagination`.
+    manualPagination: !paginate,
   })
 
   React.useEffect(() => {

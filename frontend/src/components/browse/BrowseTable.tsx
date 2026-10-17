@@ -1,11 +1,12 @@
 import * as React from "react"
 import { ColumnDef } from "@tanstack/react-table"
 import { DataTable } from "@/components/ui/data-table"
+import { DataTableFeatures } from "@/lib/tableFeatures"
 import { ColumnSchema, RowData } from "@/types"
 import { RecordDrawer } from "./RecordDrawer"
 
 interface BrowseTableProps {
-  columns: ColumnDef<RowData>[]
+  columns: ColumnDef<DataTableFeatures, RowData>[]
   rows: RowData[]
   schema: ColumnSchema[]
   loading?: boolean

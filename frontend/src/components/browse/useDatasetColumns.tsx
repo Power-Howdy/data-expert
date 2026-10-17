@@ -1,11 +1,12 @@
 import * as React from "react"
 import { ColumnDef } from "@tanstack/react-table"
+import { DataTableFeatures } from "@/lib/tableFeatures"
 import { ColumnSchema, RowData } from "@/types"
 import { CellValue } from "./CellValue"
 import { ColumnHeader } from "./ColumnHeader"
 import { textFirst } from "./columnOrder"
 
-export function useDatasetColumns(schema: ColumnSchema[] | undefined): ColumnDef<RowData>[] {
+export function useDatasetColumns(schema: ColumnSchema[] | undefined): ColumnDef<DataTableFeatures, RowData>[] {
   return React.useMemo(() => {
     if (!schema) return []
     return textFirst(schema).map((col) => ({
