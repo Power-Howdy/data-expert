@@ -49,7 +49,7 @@ Vite frontend (`frontend/`). Read [docs/architecture.md](docs/architecture.md) b
   before writing new ones.
 - All HTTP goes through `src/lib/*Api.ts` (axios); types in `src/types/`. Long calls use `timeout: 0`.
 - Global state in zustand stores (`src/stores/`); keep local state local.
-- Icons: `lucide-react` 0.303 (no `CircleHelp`; use `HelpCircle`).
+- Icons: `lucide-react` 0.511 (no `CircleHelp`; use `HelpCircle`).
 - Check with `cd frontend && npm run typecheck`. On networks that intercept TLS, npm needs
   `NODE_OPTIONS=--use-system-ca`.
 - When user-visible behavior changes, update the in-app guide (`src/components/guide/guideContent.ts`).

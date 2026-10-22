@@ -32,6 +32,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- The UI uses React 19, matching `react-dom` 19. Icons use lucide-react 0.511, which supports React 19.
 - The Browse table and the row panel show the main text column (`text`, `content`, `message`, ... or a `*_text`
   column) first.
 - The search index for large files is now under 1/100 of the file instead of several times its size: 25 MB
