@@ -1,5 +1,6 @@
-import { flexRender, Header } from "@tanstack/react-table"
+import { flexRender, Header, RowData } from "@tanstack/react-table"
 import { ChevronDown, ChevronsUpDown, ChevronUp, MoreHorizontal } from "lucide-react"
+import { DataTableFeatures } from "@/lib/tableFeatures"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -12,7 +13,7 @@ function SortIcon({ sorted, canSort }: { sorted: false | "asc" | "desc"; canSort
     : null
 }
 
-export function DataTableHeaderCell<TData>({ header }: { header: Header<TData, unknown> }) {
+export function DataTableHeaderCell<TData extends RowData>({ header }: { header: Header<DataTableFeatures, TData, unknown> }) {
   const { column } = header
   return (
     <th className="group h-10 whitespace-nowrap bg-muted px-3.5 text-left align-middle text-xs font-bold text-muted-foreground">

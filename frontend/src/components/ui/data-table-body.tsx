@@ -1,16 +1,17 @@
-import { flexRender, Table } from "@tanstack/react-table"
+import { flexRender, RowData, ReactTable } from "@tanstack/react-table"
+import { DataTableFeatures } from "@/lib/tableFeatures"
 import { cn } from "@/lib/utils"
 
-interface DataTableBodyProps<TData> {
-  table: Table<TData>
+interface DataTableBodyProps<TData extends RowData> {
+  table: ReactTable<DataTableFeatures, TData>
   columnCount: number
   onRowClick?: (row: TData) => void
   emptyText?: string
 }
 
-export function DataTableBody<TData>({ table, columnCount, onRowClick, emptyText = "No data yet" }: DataTableBodyProps<TData>) {
+export function DataTableBody<TData extends RowData>({ table, columnCount, onRowClick, emptyText = "No data yet" }: DataTableBodyProps<TData>) {
   const rows = table.getRowModel().rows
-  const selection = table.getState().rowSelection
+  const selection = table.state.rowSelection
 
   return (
     <tbody>

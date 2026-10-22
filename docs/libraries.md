@@ -32,7 +32,7 @@ where to learn more. Exact versions are pinned in [`backend/requirements.txt`](.
 | [Vite](https://vite.dev/) | 8 | Dev server and production build | MIT |
 | [Tailwind CSS](https://tailwindcss.com/) | 3 | Styling | MIT |
 | [Radix UI](https://www.radix-ui.com/primitives) | 1–2 | Accessible primitives behind `src/components/ui/` (select, tabs, dropdown, checkbox, scroll area) | MIT |
-| [TanStack Table](https://tanstack.com/table) | 8 | The Browse data table: columns, sizing, row selection | MIT |
+| [TanStack Table](https://tanstack.com/table) | 9 | The Browse data table: columns, sizing, row selection | MIT |
 | [TanStack Query](https://tanstack.com/query) | 5 | Server-state caching and request deduplication | MIT |
 | [zustand](https://zustand.docs.pmnd.rs/) | 4 | Global state stores (`src/stores/`) | MIT |
 | [axios](https://axios-http.com/) | 1 | HTTP client behind every `src/lib/*Api.ts` module | MIT |
