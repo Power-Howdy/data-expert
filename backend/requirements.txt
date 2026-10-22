@@ -6,7 +6,7 @@ certifi==2026.10.18
 click==8.5.0
 cloudpickle==3.1.2
 colorama==0.4.6
-cramjam==2.13.0
+cramjam==2.14.0
 et_xmlfile==2.0.0
 fastapi==0.143.1
 fastavro==1.13.1
