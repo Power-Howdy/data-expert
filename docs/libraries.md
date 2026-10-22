@@ -27,7 +27,7 @@ where to learn more. Exact versions are pinned in [`backend/requirements.txt`](.
 
 | Library | Version | Used for | License |
 |---------|---------|----------|---------|
-| [React](https://react.dev/) | 18 | UI components | MIT |
+| [React](https://react.dev/) | 19 | UI components | MIT |
 | [TypeScript](https://www.typescriptlang.org/) | 5 | Static types for the whole frontend | Apache-2.0 |
 | [Vite](https://vite.dev/) | 8 | Dev server and production build | MIT |
 | [Tailwind CSS](https://tailwindcss.com/) | 3 | Styling | MIT |
@@ -38,7 +38,7 @@ where to learn more. Exact versions are pinned in [`backend/requirements.txt`](.
 | [axios](https://axios-http.com/) | 1 | HTTP client behind every `src/lib/*Api.ts` module | MIT |
 | [Recharts](https://recharts.org/) | 2.12 | Charts in Stats and column details | MIT |
 | [CodeMirror 6](https://codemirror.net/) via [@uiw/react-codemirror](https://uiwjs.github.io/react-codemirror/) | 6 / 4.25 | JSON row editor and code views | MIT |
-| [lucide-react](https://lucide.dev/) | 0.303 | Icons | ISC |
+| [lucide-react](https://lucide.dev/) | 0.511 | Icons | ISC |
 | [react-hot-toast](https://react-hot-toast.com/) | 2 | Notifications | MIT |
 | [clsx](https://github.com/lukeed/clsx) + [tailwind-merge](https://github.com/dcastil/tailwind-merge) | 2 / 3 | Combining class names (`cn()` helper) | MIT |
 
