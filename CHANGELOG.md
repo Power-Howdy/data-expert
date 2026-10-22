@@ -23,6 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- Backend install works again: `pydantic` 2.14.1 matches the pinned `pydantic-core` 2.50.1.
 - `.gitignore` no longer excludes `package.json`, `package-lock.json` and `tsconfig*.json`.
 - Excel and Avro files could not be opened, and Excel export failed: `requirements.txt` now includes fastexcel,
   XlsxWriter and fastavro, and Excel files open on the first sheet unless a sheet is chosen.
@@ -33,6 +34,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 
 - The UI uses React 19, matching `react-dom` 19. Icons use lucide-react 0.511, which supports React 19.
+- The Browse table uses TanStack Table 9. Features (sorting, filtering, pagination, visibility, selection) are registered explicitly and shared by every data table.
 - The Browse table and the row panel show the main text column (`text`, `content`, `message`, ... or a `*_text`
   column) first.
 - The search index for large files is now under 1/100 of the file instead of several times its size: 25 MB

@@ -1,12 +1,12 @@
 annotated-doc==0.0.5
 annotated-types==0.8.0
 anyio==4.15.1
-ast_serialize==0.12.1
-certifi==2026.7.22
+ast_serialize==0.13.1
+certifi==2026.10.18
 click==8.5.0
 cloudpickle==3.1.2
 colorama==0.4.6
-cramjam==2.13.0
+cramjam==2.14.0
 et_xmlfile==2.0.0
 fastapi==0.143.1
 fastavro==1.13.1
@@ -23,7 +23,7 @@ librt==0.16.0
 mypy==2.4.0
 mypy_extensions==1.1.0
 narwhals==2.27.1
-numpy==2.5.3
+numpy==2.5.4
 openpyxl==3.1.5
 opentelemetry-api==1.45.1
 packaging==26.3
@@ -33,8 +33,8 @@ pluggy==1.6.0
 polars==2.0.0
 polars-runtime-32==2.0.0
 pyarrow==26.0.0
-pydantic==2.14.0
-pydantic-settings==2.15.0
+pydantic==2.14.1
+pydantic-settings==2.16.0
 pydantic_core==2.50.1
 Pygments==2.21.0
 pytest==9.1.1
