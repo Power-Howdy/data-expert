@@ -166,14 +166,17 @@ Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) and th
 ## License
 
 [MIT](LICENSE)
+
 ## Citation
 
+```bibtex
 @misc{severus2026dataexpert,
-  title = {Data Expert: A Local-First Workbench for Versioned, Privacy-Preserving Dataset Exploration and AI-Assisted Transformation},
-  author = {Severus},
-  year = {2026},
-  doi = {10.5281/zenodo.23707315},
-  url = {https://doi.org/10.5281/zenodo.23707315},
+  title     = {Data Expert: A Local-First Workbench for Versioned, Privacy-Preserving Dataset Exploration and AI-Assisted Transformation},
+  author    = {Severus},
+  year      = {2026},
+  doi       = {10.5281/zenodo.23707315},
+  url       = {https://doi.org/10.5281/zenodo.23707315},
   publisher = {Zenodo},
-  note = {Working paper, October 27, 2026}
+  note      = {Working paper, October 27, 2026}
 }
+```
