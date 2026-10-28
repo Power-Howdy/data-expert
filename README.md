@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/power-howdy/data-expert/actions/workflows/ci.yml/badge.svg)](https://github.com/power-howdy/data-expert/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.23707315-blue.svg)](https://doi.org/10.5281%2Fzenodo.23707315)
+
 
 **A local-first workbench for exploring, editing, versioning and transforming datasets, from kilobytes to many
 gigabytes.** Point it at a folder, open any Parquet, CSV, JSON or Excel file, and browse, search, profile, edit and
